@@ -6,7 +6,6 @@ from atarus_cloud.models import AuditResult
 
 
 def generate(result: AuditResult, attack_paths: list = None) -> dict:
-    """Generate executive summary sections"""
     attack_paths = attack_paths or []
 
     crits = [f for f in result.findings if f.severity == "critical"]
@@ -14,29 +13,48 @@ def generate(result: AuditResult, attack_paths: list = None) -> dict:
     meds = [f for f in result.findings if f.severity == "medium"]
     lows = [f for f in result.findings if f.severity == "low"]
 
+    provider_label = _provider_label(result.provider)
+    cli_label = _cli_label(result.provider)
+
     return {
-        "posture": _posture_statement(result, crits, highs, meds, lows),
+        "posture": _posture_statement(result, crits, highs, meds, lows, provider_label),
         "key_risks": _key_risks(result, crits, highs, attack_paths),
-        "recommended_actions": _recommended_actions(result, crits, highs, meds),
+        "recommended_actions": _recommended_actions(result, crits, highs, meds, cli_label),
     }
 
 
-def _posture_statement(result, crits, highs, meds, lows):
+def _provider_label(provider):
+    if provider == "aws":
+        return "AWS"
+    elif provider == "azure":
+        return "Azure"
+    elif provider == "gcp":
+        return "GCP"
+    return provider.upper()
+
+
+def _cli_label(provider):
+    if provider == "aws":
+        return "AWS CLI"
+    elif provider == "azure":
+        return "Azure CLI"
+    elif provider == "gcp":
+        return "gcloud"
+    return "CLI"
+
+
+def _posture_statement(result, crits, highs, meds, lows, provider_label):
     score = result.overall_score
     total = result.total_findings
 
     if score >= 90:
-        rating = "strong"
-        summary = f"The AWS environment demonstrates strong security posture with a score of {score} out of 100."
+        summary = f"The {provider_label} environment demonstrates strong security posture with a score of {score} out of 100."
     elif score >= 75:
-        rating = "adequate"
-        summary = f"The AWS environment shows adequate security posture with a score of {score} out of 100, with specific areas requiring improvement."
+        summary = f"The {provider_label} environment shows adequate security posture with a score of {score} out of 100, with specific areas requiring improvement."
     elif score >= 50:
-        rating = "concerning"
-        summary = f"The AWS environment has a concerning security posture with a score of {score} out of 100. Multiple high-impact misconfigurations exist that significantly increase the probability of compromise."
+        summary = f"The {provider_label} environment has a concerning security posture with a score of {score} out of 100. Multiple high-impact misconfigurations exist that significantly increase the probability of compromise."
     else:
-        rating = "critical"
-        summary = f"The AWS environment has a critical security posture with a score of {score} out of 100. The combination of misconfigurations present would allow an attacker to compromise the environment with minimal effort."
+        summary = f"The {provider_label} environment has a critical security posture with a score of {score} out of 100. The combination of misconfigurations present would allow an attacker to compromise the environment with minimal effort."
 
     breakdown_parts = []
     if crits:
@@ -62,7 +80,6 @@ def _key_risks(result, crits, highs, attack_paths):
         return "No critical or high severity risks were identified. The environment should maintain current controls and continue periodic assessment."
 
     risks = []
-
     critical_paths = [p for p in attack_paths if p.severity == "critical"]
     high_paths = [p for p in attack_paths if p.severity == "high"]
 
@@ -93,7 +110,7 @@ def _key_risks(result, crits, highs, attack_paths):
     return " ".join(risks) if risks else "Review the findings section for detailed analysis of identified risks."
 
 
-def _recommended_actions(result, crits, highs, meds):
+def _recommended_actions(result, crits, highs, meds, cli_label):
     if not crits and not highs and not meds:
         return "Continue current security practices. Conduct periodic reassessments to maintain posture."
 
@@ -123,7 +140,7 @@ def _recommended_actions(result, crits, highs, meds):
 
     rem_count = len([f for f in result.findings if f.remediation_cmd and not f.remediation_cmd.startswith("#")])
     if rem_count > 0:
-        actions.append(f"This assessment includes an auto-generated remediation script containing {rem_count} actionable AWS CLI command{'s' if rem_count != 1 else ''}. Review the script, validate each command against the environment, and execute it to resolve the majority of findings.")
+        actions.append(f"This assessment includes an auto-generated remediation script containing {rem_count} actionable {cli_label} command{'s' if rem_count != 1 else ''}. Review the script, validate each command against the environment, and execute it to resolve the majority of findings.")
 
     actions.append("The full findings section provides detailed observation, risk analysis, and remediation guidance for each item identified.")
 
