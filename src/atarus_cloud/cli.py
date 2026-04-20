@@ -4,12 +4,12 @@ from rich.table import Table
 from atarus_cloud.runner import CloudRunner
 from atarus_cloud.providers.aws import auth as aws_auth
 from atarus_cloud.providers.aws import iam, s3, ec2, cloudtrail, rds, vpc, lambda_fn, kms
-from atarus_cloud.analysis import attack_paths
+from atarus_cloud.analysis import attack_paths, exec_summary
 from atarus_cloud.reports import html, json_export, pdf, remediation
 
 console = Console()
 
-VERSION = "0.4.0"
+VERSION = "0.5.0"
 
 BANNER = f"""
    ╔═╗╔╦╗╔═╗╦═╗╦ ╦╔═╗  ╔═╗╦  ╔═╗╦ ╦╔╦╗
@@ -89,16 +89,18 @@ def main(provider, profile, region, output, out_format, verbose, skip, only, lis
             for p in paths[:3]:
                 console.print(f"  [red]{p.severity.upper()}[/] {p.title}")
 
+        summary = exec_summary.generate(result, attack_paths=paths)
+
         if out_format in ("html", "all"):
-            report_path = html.generate(result, output, attack_paths_list=paths)
+            report_path = html.generate(result, output, attack_paths_list=paths, summary=summary)
             console.print(f"\n[bold green]HTML report:[/] {report_path}")
 
         if out_format in ("json", "all"):
-            json_path = json_export.generate(result, output, attack_paths_list=paths)
+            json_path = json_export.generate(result, output, attack_paths_list=paths, summary=summary)
             console.print(f"[bold green]JSON report:[/] {json_path}")
 
         if out_format in ("pdf", "all"):
-            pdf_path = pdf.generate(result, output, attack_paths_list=paths)
+            pdf_path = pdf.generate(result, output, attack_paths_list=paths, summary=summary)
             console.print(f"[bold green]PDF report:[/] {pdf_path}")
 
         rem_path = remediation.generate(result, output)

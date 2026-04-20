@@ -3,7 +3,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from atarus_cloud.models import AuditResult
 
 
-def generate(result: AuditResult, output_dir: str, attack_paths_list=None) -> str:
+def generate(result: AuditResult, output_dir: str, attack_paths_list=None, summary=None) -> str:
     os.makedirs(output_dir, exist_ok=True)
 
     possible_dirs = [
@@ -39,6 +39,7 @@ def generate(result: AuditResult, output_dir: str, attack_paths_list=None) -> st
         meds=meds,
         lows=lows,
         attack_paths=attack_paths_list or [],
+        summary=summary or {},
     )
 
     output_path = os.path.join(output_dir, f"atarus-cloud-{result.account_id}.html")
