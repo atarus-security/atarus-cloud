@@ -8,12 +8,10 @@
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { background: #060606; color: #e0e0e0; font-family: 'Segoe UI', system-ui, sans-serif; line-height: 1.6; padding: 40px 20px; }
   .container { max-width: 960px; margin: 0 auto; }
-
   .header { border-bottom: 2px solid #D4263E; padding-bottom: 24px; margin-bottom: 28px; }
   .header h1 { font-size: 28px; font-weight: 600; color: #fff; letter-spacing: 1px; }
   .header h1 span { color: #D4263E; }
   .header .subtitle { font-size: 14px; color: #888; margin-top: 4px; }
-
   .summary { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 28px; }
   .card { background: #111; border: 1px solid #1a1a1a; border-radius: 8px; padding: 18px 12px; text-align: center; }
   .card .number { font-size: 34px; font-weight: 700; line-height: 1.2; }
@@ -22,63 +20,57 @@
   .score-warn { color: #EF9F27; }
   .score-bad { color: #E24B4A; }
   .score-crit { color: #D4263E; }
-
-  .tabs { display: flex; gap: 0; border-bottom: 1px solid #1a1a1a; margin-bottom: 24px; }
-  .tab { padding: 12px 24px; font-size: 14px; color: #888; cursor: pointer; border-bottom: 2px solid transparent; user-select: none; transition: color 0.2s; }
+  .tabs { display: flex; gap: 0; border-bottom: 1px solid #1a1a1a; margin-bottom: 24px; flex-wrap: wrap; }
+  .tab { padding: 12px 20px; font-size: 14px; color: #888; cursor: pointer; border-bottom: 2px solid transparent; user-select: none; }
   .tab:hover { color: #e0e0e0; }
   .tab.active { color: #D4263E; border-bottom-color: #D4263E; }
   .tab-content { display: none; }
   .tab-content.active { display: block; }
-
   .scan-info { background: #111; border: 1px solid #1a1a1a; border-radius: 8px; padding: 20px; margin-bottom: 28px; font-size: 14px; }
   .scan-info table { width: 100%; border-collapse: collapse; }
   .scan-info td { padding: 8px 0; border-bottom: 1px solid #1a1a1a; vertical-align: top; }
   .scan-info tr:last-child td { border-bottom: none; }
   .scan-info td:first-child { color: #888; width: 160px; font-size: 13px; }
-  .scan-info td:last-child { color: #e0e0e0; }
-
   .section-title { font-size: 16px; font-weight: 600; color: #fff; margin: 28px 0 14px; padding-bottom: 6px; border-bottom: 1px solid #1a1a1a; }
-
   .fix-first { background: #111; border: 1px solid #D4263E; border-radius: 8px; padding: 20px 24px; margin-bottom: 28px; }
   .fix-first h3 { color: #D4263E; font-size: 16px; margin-bottom: 14px; letter-spacing: 0.5px; }
   .fix-item { padding: 10px 0; border-bottom: 1px solid #1a1a1a; font-size: 13px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
   .fix-item:last-child { border-bottom: none; }
   .fix-item-text { flex: 1; color: #e0e0e0; }
-
   .service-bar { background: #111; border: 1px solid #1a1a1a; border-radius: 8px; padding: 14px 20px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
   .service-name { font-weight: 600; color: #fff; font-size: 14px; }
   .service-counts { display: flex; gap: 8px; align-items: center; }
-
   .finding-card { background: #111; border: 1px solid #1a1a1a; border-radius: 8px; padding: 20px 24px; margin-bottom: 16px; border-left: 3px solid #888; }
   .finding-card.sev-critical { border-left-color: #E24B4A; }
   .finding-card.sev-high { border-left-color: #D85A30; }
   .finding-card.sev-medium { border-left-color: #EF9F27; }
   .finding-card.sev-low { border-left-color: #97C459; }
-
-  .finding-header { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+  .finding-header { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; flex-wrap: wrap; }
   .finding-sev { display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
   .sev-critical { background: #501313; color: #F09595; }
   .sev-high { background: #4A1B0C; color: #F0997B; }
   .sev-medium { background: #412402; color: #FAC775; }
   .sev-low { background: #173404; color: #C0DD97; }
-
   .finding-title { font-size: 14px; font-weight: 600; color: #fff; }
   .finding-resource { font-size: 12px; color: #D4263E; font-family: 'Courier New', monospace; margin-top: 2px; }
-
   .finding-section { margin-top: 14px; }
   .finding-section-label { font-size: 10px; color: #D4263E; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; margin-bottom: 4px; }
   .finding-section-text { font-size: 13px; color: #ccc; line-height: 1.7; }
-
   .finding-cmd { background: #0a0a0a; border: 1px solid #1a1a1a; border-radius: 6px; padding: 12px 14px; margin-top: 10px; font-family: 'Courier New', monospace; font-size: 12px; color: #22c55e; white-space: pre-wrap; word-break: break-all; line-height: 1.5; }
-
   .finding-meta { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
   .meta-pill { background: #1a1a1a; padding: 4px 12px; border-radius: 4px; font-size: 11px; color: #888; }
-
+  .path-card { background: #111; border: 1px solid #D4263E; border-radius: 8px; padding: 24px; margin-bottom: 20px; }
+  .path-header { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+  .path-title { font-size: 16px; font-weight: 600; color: #fff; }
+  .path-narrative { font-size: 14px; color: #ccc; line-height: 1.7; margin-bottom: 16px; }
+  .path-impact { background: #1a0808; border-left: 3px solid #D4263E; padding: 12px 16px; margin: 12px 0; font-size: 13px; color: #F09595; border-radius: 0 6px 6px 0; }
+  .path-steps { margin-top: 14px; }
+  .path-steps-label { font-size: 10px; color: #D4263E; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; margin-bottom: 10px; }
+  .path-step { display: flex; gap: 12px; margin-bottom: 10px; font-size: 13px; color: #ccc; line-height: 1.6; }
+  .path-step-num { background: #D4263E; color: #fff; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
   .no-data { color: #555; font-size: 14px; padding: 24px 0; font-style: italic; text-align: center; }
-
   .footer { margin-top: 60px; padding-top: 20px; border-top: 1px solid #1a1a1a; text-align: center; font-size: 12px; color: #555; }
   .footer a { color: #D4263E; text-decoration: none; }
-
   @media (max-width: 640px) { .summary { grid-template-columns: repeat(2, 1fr); } }
   @media print {
     body { background: #fff; color: #111; }
@@ -89,7 +81,6 @@
 </head>
 <body>
 <div class="container">
-
   <div class="header">
     <h1>ATARUS <span>CLOUD</span></h1>
     <div class="subtitle">Cloud Security Assessment Report</div>
@@ -120,6 +111,7 @@
 
   <div class="tabs">
     <div class="tab active" onclick="switchTab('overview')">Overview</div>
+    {% if attack_paths %}<div class="tab" onclick="switchTab('paths')">Attack Paths ({{ attack_paths | length }})</div>{% endif %}
     <div class="tab" onclick="switchTab('findings')">Findings</div>
     <div class="tab" onclick="switchTab('remediation')">Remediation</div>
   </div>
@@ -132,7 +124,8 @@
         <tr><td>Started</td><td>{{ result.started_at }}</td></tr>
         <tr><td>Completed</td><td>{{ result.finished_at }}</td></tr>
         <tr><td>Total findings</td><td>{{ result.total_findings }}</td></tr>
-        <tr><td>Tool</td><td>atarus-cloud v0.3.0</td></tr>
+        <tr><td>Attack paths</td><td>{{ attack_paths | length }}</td></tr>
+        <tr><td>Tool</td><td>atarus-cloud v0.4.0</td></tr>
       </table>
     </div>
 
@@ -166,6 +159,33 @@
     {% endif %}
   </div>
 
+  {% if attack_paths %}
+  <div id="tab-paths" class="tab-content">
+    <p style="color:#888; font-size:13px; margin-bottom:20px; line-height:1.7;">Attack paths chain individual findings into realistic attack scenarios. Each path represents how an attacker could combine the misconfigurations below to achieve impact. Fix any finding referenced in a critical path to break the chain.</p>
+    {% for p in attack_paths %}
+    <div class="path-card">
+      <div class="path-header">
+        <span class="finding-sev sev-{{ p.severity }}">{{ p.severity }}</span>
+        <span class="path-title">{{ p.title }}</span>
+      </div>
+      <div class="path-narrative">{{ p.narrative }}</div>
+      <div class="path-impact"><strong>Impact:</strong> {{ p.impact }}</div>
+      {% if p.steps %}
+      <div class="path-steps">
+        <div class="path-steps-label">Attack sequence</div>
+        {% for step in p.steps %}
+        <div class="path-step">
+          <span class="path-step-num">{{ loop.index }}</span>
+          <span>{{ step }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
   <div id="tab-findings" class="tab-content">
     {% for severity, findings_list, label in [('critical', crits, 'Critical'), ('high', highs, 'High'), ('medium', meds, 'Medium'), ('low', lows, 'Low')] %}
     {% if findings_list %}
@@ -177,7 +197,6 @@
         <span class="finding-title">{{ f.service }}: {{ f.resource_name }}</span>
       </div>
       <div class="finding-resource">{{ f.resource_id }}</div>
-
       <div class="finding-section">
         <div class="finding-section-label">Observation</div>
         <div class="finding-section-text">{{ f.observation }}</div>
@@ -190,9 +209,7 @@
         <div class="finding-section-label">Recommendation</div>
         <div class="finding-section-text">{{ f.recommendation }}</div>
       </div>
-      {% if f.remediation_cmd %}
-      <div class="finding-cmd">{{ f.remediation_cmd }}</div>
-      {% endif %}
+      {% if f.remediation_cmd %}<div class="finding-cmd">{{ f.remediation_cmd }}</div>{% endif %}
       <div class="finding-meta">
         {% if f.remediation_effort %}<span class="meta-pill">{{ f.remediation_effort }}</span>{% endif %}
         {% for c in f.compliance %}<span class="meta-pill">{{ c }}</span>{% endfor %}
@@ -201,19 +218,14 @@
     {% endfor %}
     {% endif %}
     {% endfor %}
-    {% if not result.findings %}
-    <div class="no-data">No findings detected. Your cloud environment looks clean.</div>
-    {% endif %}
+    {% if not result.findings %}<div class="no-data">No findings detected.</div>{% endif %}
   </div>
 
   <div id="tab-remediation" class="tab-content">
     {% set actionable = [] %}
     {% for f in crits + highs + meds + lows %}
-    {% if f.remediation_cmd and not f.remediation_cmd.startswith('#') %}
-    {% if actionable.append(f) %}{% endif %}
-    {% endif %}
+    {% if f.remediation_cmd and not f.remediation_cmd.startswith('#') %}{% if actionable.append(f) %}{% endif %}{% endif %}
     {% endfor %}
-
     {% if actionable %}
     <div class="scan-info">
       <table>
@@ -221,7 +233,6 @@
         <tr><td>Script</td><td>remediation-{{ result.account_id }}.sh</td></tr>
       </table>
     </div>
-
     {% for f in actionable %}
     <div class="finding-card sev-{{ f.severity }}">
       <div class="finding-header">
@@ -236,15 +247,10 @@
       {% if f.remediation_effort %}<div class="finding-meta"><span class="meta-pill">{{ f.remediation_effort }}</span></div>{% endif %}
     </div>
     {% endfor %}
-    {% else %}
-    <div class="no-data">No CLI-actionable remediation steps available.</div>
-    {% endif %}
+    {% else %}<div class="no-data">No CLI-actionable remediation steps available.</div>{% endif %}
   </div>
 
-  <div class="footer">
-    Generated by <a href="https://atarussecurity.com">Atarus Offensive Security</a>
-  </div>
-
+  <div class="footer">Generated by <a href="https://atarussecurity.com">Atarus Offensive Security</a></div>
 </div>
 <script>
 function switchTab(name) {
