@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "atarus-cloud"
+version = "0.1.0"
+description = "Cloud security misconfiguration scanner by Atarus Offensive Security"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+authors = [
+    {name = "Atarus Offensive Security", email = "info@atarussecurity.com"},
+]
+keywords = ["cloud", "security", "aws", "azure", "pentest", "misconfiguration"]
+dependencies = [
+    "click>=8.0",
+    "boto3>=1.28",
+    "rich>=13.0",
+    "jinja2>=3.1",
+    "weasyprint>=60.0",
+]
+
+[project.scripts]
+atarus-cloud = "atarus_cloud.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/atarus-security/atarus-cloud"
+Repository = "https://github.com/atarus-security/atarus-cloud"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+atarus_cloud = ["templates/*.html"]
