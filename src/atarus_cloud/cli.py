@@ -3,12 +3,12 @@ from rich.console import Console
 from rich.table import Table
 from atarus_cloud.runner import CloudRunner
 from atarus_cloud.providers.aws import auth as aws_auth
-from atarus_cloud.providers.aws import iam, s3
+from atarus_cloud.providers.aws import iam, s3, ec2, cloudtrail, rds, vpc
 from atarus_cloud.reports import html, json_export, pdf, remediation
 
 console = Console()
 
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 
 BANNER = f"""
    ╔═╗╔╦╗╔═╗╦═╗╦ ╦╔═╗  ╔═╗╦  ╔═╗╦ ╦╔╦╗
@@ -20,6 +20,10 @@ BANNER = f"""
 AWS_MODULES = [
     ("IAM audit", "iam", iam.run),
     ("S3 audit", "s3", s3.run),
+    ("EC2 audit", "ec2", ec2.run),
+    ("CloudTrail audit", "cloudtrail", cloudtrail.run),
+    ("RDS audit", "rds", rds.run),
+    ("VPC audit", "vpc", vpc.run),
 ]
 
 
