@@ -168,11 +168,11 @@ Auto-generated shell script with every actionable CLI command, ordered by severi
 
 ## Part of the atarus- tool suite
 
-- **[atarus-recon](https://github.com/atarus-security/atarus-recon)** - External attack surface recon (11 modules)
+Open source offensive security tools built by practitioners.
+
+- **[atarus-recon](https://github.com/atarus-security/atarus-recon)** - External attack surface recon
 - **atarus-cloud** - Multi-cloud misconfiguration scanner (you are here)
-- **atarus-report** - AI-powered pentest report generator (planned)
-- **atarus-phish** - Phishing campaign analysis (planned)
-- **atarus-cred** - Credential exposure checker (planned)
+- **[atarus-report-kit](https://github.com/atarus-security/atarus-report-kit)** - Single-file offline pentest reporting tool
 
 ## License
 
