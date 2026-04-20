@@ -1,0 +1,125 @@
+# atarus-cloud
+
+Cloud security misconfiguration scanner by [Atarus Offensive Security](https://atarussecurity.com).
+
+Audit your cloud environment. Get findings in plain English with observation, risk, and recommendation. Generate a remediation script you can actually run.
+
+## What it does
+
+**AWS auditing across six services:**
+
+- IAM: Root MFA, user MFA, access key age, password policy, admin users, unused accounts
+- S3: Public access blocks, encryption, versioning, access logging
+- EC2: Security group exposure (SSH, RDP, databases open to internet), public IPs, EBS encryption
+- CloudTrail: Multi-region logging, log file validation, active logging status
+- RDS: Public databases, encryption, auto minor version upgrade, backup retention
+- VPC: Default VPC usage, flow logs
+
+**Every finding includes:**
+
+- Observation: What was found
+- Risk: What an attacker could do
+- Recommendation: How to fix it
+- Remediation command: The exact AWS CLI command to fix it
+- Remediation effort: How long it takes
+- Compliance mapping: CIS benchmark reference
+
+**Output formats:**
+
+- HTML report with tabbed navigation, score card, and fix-these-first section
+- PDF with Atarus branding, page breaks, confidential footer
+- JSON for integration with other tools
+- Runnable remediation.sh script with all CLI fixes
+
+## Install
+
+```bash
+git clone https://github.com/atarus-security/atarus-cloud.git
+cd atarus-cloud
+python3 -m venv venv
+source venv/bin/activate
+pip install -e .
+```
+
+## Requirements
+
+- Python 3.10+
+- AWS CLI configured with credentials (`aws configure`)
+- IAM permissions to read account configuration (SecurityAudit managed policy works)
+
+## Usage
+
+```bash
+# Full audit with HTML report
+atarus-cloud -p aws
+
+# All output formats (HTML, JSON, PDF, remediation.sh)
+atarus-cloud -p aws --format all
+
+# Specific AWS profile
+atarus-cloud -p aws --profile production --format all
+
+# Specific region
+atarus-cloud -p aws --region us-east-1
+
+# Skip slow modules
+atarus-cloud -p aws --skip rds,vpc
+
+# Only run specific modules
+atarus-cloud -p aws --only iam,s3
+
+# List all modules
+atarus-cloud --list-modules
+
+# Version
+atarus-cloud --version
+```
+
+## Modules
+
+| Key | Module | What it checks |
+|---|---|---|
+| iam | IAM audit | Users, MFA, access keys, password policy, admin access |
+| s3 | S3 audit | Bucket policies, encryption, versioning, logging |
+| ec2 | EC2 audit | Security groups, public IPs, EBS encryption |
+| cloudtrail | CloudTrail audit | Logging gaps, multi-region, validation |
+| rds | RDS audit | Public databases, encryption, backups |
+| vpc | VPC audit | Default VPCs, flow logs |
+
+## What sets it apart
+
+**Observation, Risk, Recommendation format.** Every finding reads like a pen test report, not a compliance dump. Your client or their CISO can understand it without Googling CIS benchmark numbers.
+
+**Auto-generated remediation script.** Review it, approve it, run it. Fix 40 findings with one script instead of clicking through the console.
+
+**Fix these first prioritization.** No more staring at 200 findings wondering where to start. Critical and high severity fixes surface at the top of every report.
+
+**Clean, branded output.** Hand the PDF directly to a client. Every page has a confidential footer and page numbers. No post-processing required.
+
+## Roadmap
+
+- Lambda audit: Environment variable secrets, function policies
+- KMS audit: Key rotation, key policies
+- Secrets Manager audit: Rotation, access policies
+- Multi-account support (organization-wide scans)
+- Azure provider (az login authentication)
+- GCP provider (gcloud authentication)
+- Attack path chaining (correlate findings into attack narratives)
+- Executive summary auto-generation
+- Compliance report mode (CIS, NIST, PCI export)
+
+## Part of the atarus- tool suite
+
+- **[atarus-recon](https://github.com/atarus-security/atarus-recon)** - External attack surface recon
+- **atarus-cloud** - Cloud misconfiguration scanner (you are here)
+- **atarus-report** - AI-powered pentest report generator (planned)
+- **atarus-phish** - Phishing campaign analysis (planned)
+- **atarus-cred** - Credential exposure checker (planned)
+
+## License
+
+MIT License. See LICENSE for details.
+
+## Built by
+
+[Atarus Offensive Security LLC](https://atarussecurity.com)

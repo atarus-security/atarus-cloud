@@ -8,57 +8,77 @@
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { background: #060606; color: #e0e0e0; font-family: 'Segoe UI', system-ui, sans-serif; line-height: 1.6; padding: 40px 20px; }
   .container { max-width: 960px; margin: 0 auto; }
-  .header { border-bottom: 2px solid #D4263E; padding-bottom: 24px; margin-bottom: 24px; }
+
+  .header { border-bottom: 2px solid #D4263E; padding-bottom: 24px; margin-bottom: 28px; }
   .header h1 { font-size: 28px; font-weight: 600; color: #fff; letter-spacing: 1px; }
   .header h1 span { color: #D4263E; }
   .header .subtitle { font-size: 14px; color: #888; margin-top: 4px; }
-  .summary { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 24px; }
-  .card { background: #111; border: 1px solid #1a1a1a; border-radius: 8px; padding: 16px; text-align: center; }
-  .card .number { font-size: 32px; font-weight: 700; }
-  .card .label { font-size: 11px; color: #888; margin-top: 4px; text-transform: uppercase; letter-spacing: 1px; }
+
+  .summary { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 28px; }
+  .card { background: #111; border: 1px solid #1a1a1a; border-radius: 8px; padding: 18px 12px; text-align: center; }
+  .card .number { font-size: 34px; font-weight: 700; line-height: 1.2; }
+  .card .label { font-size: 10px; color: #888; margin-top: 6px; text-transform: uppercase; letter-spacing: 1.5px; }
   .score-good { color: #22c55e; }
   .score-warn { color: #EF9F27; }
   .score-bad { color: #E24B4A; }
   .score-crit { color: #D4263E; }
+
   .tabs { display: flex; gap: 0; border-bottom: 1px solid #1a1a1a; margin-bottom: 24px; }
-  .tab { padding: 12px 24px; font-size: 14px; color: #888; cursor: pointer; border-bottom: 2px solid transparent; user-select: none; }
+  .tab { padding: 12px 24px; font-size: 14px; color: #888; cursor: pointer; border-bottom: 2px solid transparent; user-select: none; transition: color 0.2s; }
   .tab:hover { color: #e0e0e0; }
   .tab.active { color: #D4263E; border-bottom-color: #D4263E; }
   .tab-content { display: none; }
   .tab-content.active { display: block; }
-  .scan-info { background: #111; border: 1px solid #1a1a1a; border-radius: 8px; padding: 20px; margin-bottom: 24px; font-size: 14px; }
-  .scan-info table { width: 100%; }
-  .scan-info td { padding: 6px 0; border-bottom: 1px solid #1a1a1a; }
-  .scan-info td:first-child { color: #888; width: 160px; }
-  .section-title { font-size: 16px; font-weight: 600; color: #fff; margin: 24px 0 12px; }
-  .finding-card { background: #111; border: 1px solid #1a1a1a; border-radius: 8px; padding: 20px; margin-bottom: 16px; border-left: 3px solid #888; }
+
+  .scan-info { background: #111; border: 1px solid #1a1a1a; border-radius: 8px; padding: 20px; margin-bottom: 28px; font-size: 14px; }
+  .scan-info table { width: 100%; border-collapse: collapse; }
+  .scan-info td { padding: 8px 0; border-bottom: 1px solid #1a1a1a; vertical-align: top; }
+  .scan-info tr:last-child td { border-bottom: none; }
+  .scan-info td:first-child { color: #888; width: 160px; font-size: 13px; }
+  .scan-info td:last-child { color: #e0e0e0; }
+
+  .section-title { font-size: 16px; font-weight: 600; color: #fff; margin: 28px 0 14px; padding-bottom: 6px; border-bottom: 1px solid #1a1a1a; }
+
+  .fix-first { background: #111; border: 1px solid #D4263E; border-radius: 8px; padding: 20px 24px; margin-bottom: 28px; }
+  .fix-first h3 { color: #D4263E; font-size: 16px; margin-bottom: 14px; letter-spacing: 0.5px; }
+  .fix-item { padding: 10px 0; border-bottom: 1px solid #1a1a1a; font-size: 13px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .fix-item:last-child { border-bottom: none; }
+  .fix-item-text { flex: 1; color: #e0e0e0; }
+
+  .service-bar { background: #111; border: 1px solid #1a1a1a; border-radius: 8px; padding: 14px 20px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+  .service-name { font-weight: 600; color: #fff; font-size: 14px; }
+  .service-counts { display: flex; gap: 8px; align-items: center; }
+
+  .finding-card { background: #111; border: 1px solid #1a1a1a; border-radius: 8px; padding: 20px 24px; margin-bottom: 16px; border-left: 3px solid #888; }
   .finding-card.sev-critical { border-left-color: #E24B4A; }
   .finding-card.sev-high { border-left-color: #D85A30; }
   .finding-card.sev-medium { border-left-color: #EF9F27; }
   .finding-card.sev-low { border-left-color: #97C459; }
-  .finding-sev { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; margin-right: 8px; }
+
+  .finding-header { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+  .finding-sev { display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
   .sev-critical { background: #501313; color: #F09595; }
   .sev-high { background: #4A1B0C; color: #F0997B; }
   .sev-medium { background: #412402; color: #FAC775; }
   .sev-low { background: #173404; color: #C0DD97; }
+
   .finding-title { font-size: 14px; font-weight: 600; color: #fff; }
-  .finding-resource { font-size: 12px; color: #D4263E; font-family: 'Courier New', monospace; margin-top: 4px; }
-  .finding-section { margin-top: 12px; }
-  .finding-section-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
-  .finding-section-text { font-size: 13px; color: #ccc; }
-  .finding-cmd { background: #0a0a0a; border-radius: 6px; padding: 10px 12px; margin-top: 8px; font-family: 'Courier New', monospace; font-size: 12px; color: #22c55e; white-space: pre-wrap; word-break: break-all; }
-  .finding-meta { display: flex; gap: 12px; margin-top: 12px; }
-  .meta-pill { background: #1a1a1a; padding: 3px 10px; border-radius: 4px; font-size: 11px; color: #888; }
-  .fix-first { background: #111; border: 1px solid #D4263E; border-radius: 8px; padding: 20px; margin-bottom: 24px; }
-  .fix-first h3 { color: #D4263E; font-size: 16px; margin-bottom: 12px; }
-  .fix-item { padding: 10px 0; border-bottom: 1px solid #1a1a1a; font-size: 14px; display: flex; justify-content: space-between; }
-  .fix-item:last-child { border-bottom: none; }
-  .service-bar { background: #111; border: 1px solid #1a1a1a; border-radius: 8px; padding: 16px 20px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
-  .service-name { font-weight: 600; color: #fff; }
-  .service-counts { display: flex; gap: 8px; }
-  .no-data { color: #555; font-size: 14px; padding: 20px 0; font-style: italic; }
+  .finding-resource { font-size: 12px; color: #D4263E; font-family: 'Courier New', monospace; margin-top: 2px; }
+
+  .finding-section { margin-top: 14px; }
+  .finding-section-label { font-size: 10px; color: #D4263E; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; margin-bottom: 4px; }
+  .finding-section-text { font-size: 13px; color: #ccc; line-height: 1.7; }
+
+  .finding-cmd { background: #0a0a0a; border: 1px solid #1a1a1a; border-radius: 6px; padding: 12px 14px; margin-top: 10px; font-family: 'Courier New', monospace; font-size: 12px; color: #22c55e; white-space: pre-wrap; word-break: break-all; line-height: 1.5; }
+
+  .finding-meta { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .meta-pill { background: #1a1a1a; padding: 4px 12px; border-radius: 4px; font-size: 11px; color: #888; }
+
+  .no-data { color: #555; font-size: 14px; padding: 24px 0; font-style: italic; text-align: center; }
+
   .footer { margin-top: 60px; padding-top: 20px; border-top: 1px solid #1a1a1a; text-align: center; font-size: 12px; color: #555; }
   .footer a { color: #D4263E; text-decoration: none; }
+
   @media (max-width: 640px) { .summary { grid-template-columns: repeat(2, 1fr); } }
   @media print {
     body { background: #fff; color: #111; }
@@ -69,6 +89,7 @@
 </head>
 <body>
 <div class="container">
+
   <div class="header">
     <h1>ATARUS <span>CLOUD</span></h1>
     <div class="subtitle">Cloud Security Assessment Report</div>
@@ -111,7 +132,7 @@
         <tr><td>Started</td><td>{{ result.started_at }}</td></tr>
         <tr><td>Completed</td><td>{{ result.finished_at }}</td></tr>
         <tr><td>Total findings</td><td>{{ result.total_findings }}</td></tr>
-        <tr><td>Tool</td><td>atarus-cloud v0.1.0</td></tr>
+        <tr><td>Tool</td><td>atarus-cloud v0.2.0</td></tr>
       </table>
     </div>
 
@@ -121,7 +142,8 @@
       <h3>Fix these first</h3>
       {% for f in top_fixes %}
       <div class="fix-item">
-        <span><span class="finding-sev sev-{{ f.severity }}">{{ f.severity }}</span> {{ f.observation[:70] }}{% if f.observation|length > 70 %}...{% endif %}</span>
+        <span class="finding-sev sev-{{ f.severity }}">{{ f.severity }}</span>
+        <span class="fix-item-text">{{ f.observation[:80] }}{% if f.observation|length > 80 %}...{% endif %}</span>
         <span class="meta-pill">{{ f.remediation_effort }}</span>
       </div>
       {% endfor %}
@@ -150,9 +172,12 @@
     <div class="section-title">{{ label }}</div>
     {% for f in findings_list %}
     <div class="finding-card sev-{{ severity }}">
-      <span class="finding-sev sev-{{ severity }}">{{ severity }}</span>
-      <span class="finding-title">{{ f.service }}: {{ f.resource_name }}</span>
+      <div class="finding-header">
+        <span class="finding-sev sev-{{ severity }}">{{ severity }}</span>
+        <span class="finding-title">{{ f.service }}: {{ f.resource_name }}</span>
+      </div>
       <div class="finding-resource">{{ f.resource_id }}</div>
+
       <div class="finding-section">
         <div class="finding-section-label">Observation</div>
         <div class="finding-section-text">{{ f.observation }}</div>
@@ -199,8 +224,10 @@
 
     {% for f in actionable %}
     <div class="finding-card sev-{{ f.severity }}">
-      <span class="finding-sev sev-{{ f.severity }}">{{ f.severity }}</span>
-      <span class="finding-title">{{ f.resource_name }}</span>
+      <div class="finding-header">
+        <span class="finding-sev sev-{{ f.severity }}">{{ f.severity }}</span>
+        <span class="finding-title">{{ f.resource_name }}</span>
+      </div>
       <div class="finding-section">
         <div class="finding-section-label">Fix</div>
         <div class="finding-section-text">{{ f.recommendation }}</div>
@@ -217,6 +244,7 @@
   <div class="footer">
     Generated by <a href="https://atarussecurity.com">Atarus Offensive Security</a>
   </div>
+
 </div>
 <script>
 function switchTab(name) {
