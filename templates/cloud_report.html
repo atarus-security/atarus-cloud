@@ -149,7 +149,7 @@
         <tr><td>Attack paths</td><td>{{ attack_paths | length }}</td></tr>
         {% if compliance %}<tr><td>CIS controls failed</td><td>{{ compliance.cis_failed }} of {{ compliance.cis_total }}</td></tr>
         <tr><td>NIST controls failed</td><td>{{ compliance.nist_failed }} of {{ compliance.nist_total }}</td></tr>{% endif %}
-        <tr><td>Tool</td><td>atarus-cloud v0.7.0</td></tr>
+        <tr><td>Tool</td><td>atarus-cloud v0.8.0</td></tr>
       </table>
     </div>
 
@@ -272,11 +272,11 @@
 
   {% if compliance %}
   <div id="tab-compliance" class="tab-content">
-    <p style="color:#888; font-size:13px; margin-bottom:20px; line-height:1.7;">Compliance mapping shows how identified findings map to CIS AWS Foundations Benchmark controls and NIST 800-53 Rev 5 controls. Controls listed as failed have at least one finding violating that control.</p>
+    <p style="color:#888; font-size:13px; margin-bottom:20px; line-height:1.7;">Compliance mapping shows how identified findings map to {{ compliance.cis_framework_name if compliance.cis_framework_name else "CIS" }} controls and NIST 800-53 Rev 5 controls. Controls listed as failed have at least one finding violating that control.</p>
 
     <div class="compliance-stats">
       <div class="framework-card">
-        <div class="framework-name">CIS AWS Benchmark</div>
+        <div class="framework-name">{{ compliance.cis_framework_name if compliance.cis_framework_name else "CIS" }}</div>
         <div class="framework-score"><span class="{{ 'score-good' if compliance.cis_failed == 0 else 'score-warn' if compliance.cis_failed <= 3 else 'score-bad' }}">{{ compliance.cis_failed }}</span> / {{ compliance.cis_total }}</div>
         <div class="framework-desc">controls failed</div>
       </div>
@@ -288,7 +288,7 @@
     </div>
 
     {% if compliance.cis_by_category %}
-    <div class="section-title">CIS AWS Foundations Benchmark</div>
+    <div class="section-title">{{ compliance.cis_framework_name if compliance.cis_framework_name else "CIS" }}</div>
     {% for category, controls in compliance.cis_by_category.items() %}
     <div class="control-category-title">{{ category }}</div>
     {% for c in controls %}
