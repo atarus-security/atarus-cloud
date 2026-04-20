@@ -3,13 +3,13 @@ from rich.console import Console
 from rich.table import Table
 from atarus_cloud.runner import CloudRunner
 from atarus_cloud.providers.aws import auth as aws_auth
-from atarus_cloud.providers.aws import iam, s3, ec2, cloudtrail, rds, vpc, lambda_fn, kms
+from atarus_cloud.providers.aws import iam, s3, ec2, cloudtrail, rds, vpc, lambda_fn, kms, secrets
 from atarus_cloud.analysis import attack_paths, exec_summary
 from atarus_cloud.reports import html, json_export, pdf, remediation
 
 console = Console()
 
-VERSION = "0.5.0"
+VERSION = "0.6.0"
 
 BANNER = f"""
    ╔═╗╔╦╗╔═╗╦═╗╦ ╦╔═╗  ╔═╗╦  ╔═╗╦ ╦╔╦╗
@@ -27,6 +27,7 @@ AWS_MODULES = [
     ("VPC audit", "vpc", vpc.run),
     ("Lambda audit", "lambda", lambda_fn.run),
     ("KMS audit", "kms", kms.run),
+    ("Secrets Manager audit", "secrets", secrets.run),
 ]
 
 
