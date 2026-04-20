@@ -6,12 +6,13 @@ from atarus_cloud.providers.aws import auth as aws_auth
 from atarus_cloud.providers.aws import iam, s3, ec2, cloudtrail, rds, vpc, lambda_fn, kms, secrets
 from atarus_cloud.providers.azure import auth as az_auth
 from atarus_cloud.providers.azure import identity as az_identity, storage as az_storage, network as az_network, compute as az_compute
+from atarus_cloud.providers.azure import keyvault as az_keyvault, sql as az_sql, cosmosdb as az_cosmosdb
 from atarus_cloud.analysis import attack_paths, exec_summary, compliance
 from atarus_cloud.reports import html, json_export, pdf, remediation
 
 console = Console()
 
-VERSION = "0.8.0"
+VERSION = "0.9.0"
 
 BANNER = f"""
    ╔═╗╔╦╗╔═╗╦═╗╦ ╦╔═╗  ╔═╗╦  ╔═╗╦ ╦╔╦╗
@@ -37,6 +38,9 @@ AZURE_MODULES = [
     ("Storage audit", "storage", az_storage.run),
     ("Network audit", "network", az_network.run),
     ("Compute audit", "compute", az_compute.run),
+    ("Key Vault audit", "keyvault", az_keyvault.run),
+    ("SQL audit", "sql", az_sql.run),
+    ("Cosmos DB audit", "cosmosdb", az_cosmosdb.run),
 ]
 
 
