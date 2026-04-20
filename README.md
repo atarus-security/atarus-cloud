@@ -2,11 +2,11 @@
 
 Cloud security misconfiguration scanner by [Atarus Offensive Security](https://atarussecurity.com).
 
-Audit your cloud environment. Get findings in plain English with observation, risk, and recommendation. Generate a remediation script you can actually run.
+Audit your cloud environment. Get findings in plain English with observation, risk, and recommendation. Chain findings into realistic attack paths. Generate an executive summary for leadership. Run an auto-generated remediation script to fix it all.
 
 ## What it does
 
-**AWS auditing across six services:**
+**Nine AWS audit modules:**
 
 - IAM: Root MFA, user MFA, access key age, password policy, admin users, unused accounts
 - S3: Public access blocks, encryption, versioning, access logging
@@ -14,6 +14,17 @@ Audit your cloud environment. Get findings in plain English with observation, ri
 - CloudTrail: Multi-region logging, log file validation, active logging status
 - RDS: Public databases, encryption, auto minor version upgrade, backup retention
 - VPC: Default VPC usage, flow logs
+- Lambda: Environment variable secrets, deprecated runtimes, function resource policies
+- KMS: Customer-managed key rotation, overly permissive key policies
+- Secrets Manager: Automatic rotation, secret age, resource policies, deletion protection
+
+**Attack path correlation:**
+
+Findings are chained into realistic attack narratives. Instead of listing "no MFA" and "admin access" as separate findings, atarus-cloud shows you the scenario: "Full account takeover via username. Attacker obtains password, logs in without MFA, inherits admin access, disables logging, exfiltrates data." Every attack path includes severity, impact, numbered attack sequence, and references to the underlying findings.
+
+**Executive summary:**
+
+Auto-generated plain-language summary for non-technical stakeholders. Three sections: Security posture, Key risks, Recommended actions. Ready to hand to a city manager, CISO, or board.
 
 **Every finding includes:**
 
@@ -26,10 +37,10 @@ Audit your cloud environment. Get findings in plain English with observation, ri
 
 **Output formats:**
 
-- HTML report with tabbed navigation, score card, and fix-these-first section
-- PDF with Atarus branding, page breaks, confidential footer
+- HTML report with tabbed navigation: Overview, Executive Summary, Attack Paths, Findings, Remediation
+- PDF with Atarus branding, page breaks per section, confidential footer
 - JSON for integration with other tools
-- Runnable remediation.sh script with all CLI fixes
+- Runnable remediation.sh script with all CLI fixes ordered by severity
 
 ## Install
 
@@ -85,10 +96,17 @@ atarus-cloud --version
 | cloudtrail | CloudTrail audit | Logging gaps, multi-region, validation |
 | rds | RDS audit | Public databases, encryption, backups |
 | vpc | VPC audit | Default VPCs, flow logs |
+| lambda | Lambda audit | Env var secrets, deprecated runtimes, policies |
+| kms | KMS audit | Key rotation, resource policies |
+| secrets | Secrets Manager audit | Rotation, age, resource policies |
 
 ## What sets it apart
 
 **Observation, Risk, Recommendation format.** Every finding reads like a pen test report, not a compliance dump. Your client or their CISO can understand it without Googling CIS benchmark numbers.
+
+**Attack path chaining.** No other cloud scanner connects the dots between findings. atarus-cloud tells you how an attacker would combine misconfigurations to achieve real impact. Fix any finding in the chain to break the path.
+
+**Auto-generated executive summary.** Plain-language posture analysis, key risks, and recommended actions. Ready for leadership review without a translator.
 
 **Auto-generated remediation script.** Review it, approve it, run it. Fix 40 findings with one script instead of clicking through the console.
 
@@ -98,19 +116,17 @@ atarus-cloud --version
 
 ## Roadmap
 
-- Lambda audit: Environment variable secrets, function policies
-- KMS audit: Key rotation, key policies
-- Secrets Manager audit: Rotation, access policies
+- Azure provider (az login authentication, identity, storage, network, compute, keyvault)
+- GCP provider (gcloud authentication, IAM, storage, compute)
 - Multi-account support (organization-wide scans)
-- Azure provider (az login authentication)
-- GCP provider (gcloud authentication)
-- Attack path chaining (correlate findings into attack narratives)
-- Executive summary auto-generation
+- ECR and ECS audit modules (container registry and compute)
+- API Gateway audit module
+- EKS audit module
 - Compliance report mode (CIS, NIST, PCI export)
 
 ## Part of the atarus- tool suite
 
-- **[atarus-recon](https://github.com/atarus-security/atarus-recon)** - External attack surface recon
+- **[atarus-recon](https://github.com/atarus-security/atarus-recon)** - External attack surface recon (11 modules)
 - **atarus-cloud** - Cloud misconfiguration scanner (you are here)
 - **atarus-report** - AI-powered pentest report generator (planned)
 - **atarus-phish** - Phishing campaign analysis (planned)
