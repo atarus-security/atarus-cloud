@@ -8,7 +8,7 @@ def generate(result: AuditResult, output_dir: str, attack_paths_list=None, summa
     os.makedirs(output_dir, exist_ok=True)
     data = asdict(result)
     data["tool"] = "atarus-cloud"
-    data["version"] = "0.9.0"
+    data["version"] = "1.0.0"
     if attack_paths_list:
         data["attack_paths"] = [
             {

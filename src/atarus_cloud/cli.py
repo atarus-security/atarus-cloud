@@ -12,7 +12,7 @@ from atarus_cloud.reports import html, json_export, pdf, remediation
 
 console = Console()
 
-VERSION = "0.9.0"
+VERSION = "1.0.0"
 
 BANNER = f"""
    ╔═╗╔╦╗╔═╗╦═╗╦ ╦╔═╗  ╔═╗╦  ╔═╗╦ ╦╔╦╗
