@@ -39,6 +39,17 @@ CONTROL_LIBRARY = {
     "CIS Azure 6.2": {"framework": "CIS Azure", "title": "Ensure SSH access from the Internet is restricted", "category": "Networking"},
     "CIS Azure 7.2": {"framework": "CIS Azure", "title": "Ensure Azure Disk Encryption is enabled on VMs", "category": "Compute"},
     "CIS Azure 7.3": {"framework": "CIS Azure", "title": "Ensure only managed disks are used for VMs", "category": "Compute"},
+    "CIS Azure 4.1.1": {"framework": "CIS Azure", "title": "Ensure public network access is disabled for SQL servers", "category": "Databases"},
+    "CIS Azure 4.1.2": {"framework": "CIS Azure", "title": "Ensure SQL server firewall rules do not allow 0.0.0.0/0", "category": "Databases"},
+    "CIS Azure 4.1.3": {"framework": "CIS Azure", "title": "Ensure 'Allow Azure services' is disabled for SQL servers", "category": "Databases"},
+    "CIS Azure 4.1.4": {"framework": "CIS Azure", "title": "Ensure minimum TLS version for SQL servers is 1.2", "category": "Databases"},
+    "CIS Azure 4.1.5": {"framework": "CIS Azure", "title": "Ensure Entra ID admin is configured for SQL servers", "category": "Databases"},
+    "CIS Azure 4.1.6": {"framework": "CIS Azure", "title": "Ensure SQL auditing is enabled", "category": "Databases"},
+    "CIS Azure 4.5.1": {"framework": "CIS Azure", "title": "Ensure Cosmos DB network access is restricted", "category": "Databases"},
+    "CIS Azure 8.1": {"framework": "CIS Azure", "title": "Ensure Key Vault soft delete is enabled", "category": "Key Vault"},
+    "CIS Azure 8.2": {"framework": "CIS Azure", "title": "Ensure Key Vault purge protection is enabled", "category": "Key Vault"},
+    "CIS Azure 8.5": {"framework": "CIS Azure", "title": "Ensure Key Vault network access is restricted", "category": "Key Vault"},
+
 
     # NIST 800-53 Rev 5 (applicable to both AWS and Azure)
     "NIST AC-2": {"framework": "NIST 800-53", "title": "Account Management", "category": "Access Control"},
@@ -89,6 +100,17 @@ CIS_TO_NIST = {
     "CIS Azure 6.2": ["NIST SC-7", "NIST AC-3"],
     "CIS Azure 7.2": ["NIST SC-28"],
     "CIS Azure 7.3": ["NIST SC-28"],
+    "CIS Azure 4.1.1": ["NIST SC-7", "NIST AC-3"],
+    "CIS Azure 4.1.2": ["NIST SC-7"],
+    "CIS Azure 4.1.3": ["NIST SC-7", "NIST AC-3"],
+    "CIS Azure 4.1.4": ["NIST SC-8"],
+    "CIS Azure 4.1.5": ["NIST IA-2", "NIST AC-2"],
+    "CIS Azure 4.1.6": ["NIST AU-2", "NIST AU-12"],
+    "CIS Azure 4.5.1": ["NIST SC-7"],
+    "CIS Azure 8.1": ["NIST SC-12"],
+    "CIS Azure 8.2": ["NIST SC-12"],
+    "CIS Azure 8.5": ["NIST SC-7", "NIST AC-3"],
+
 }
 
 
