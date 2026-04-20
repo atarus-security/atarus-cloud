@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>atarus-cloud | {{ result.account_id }}</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #060606; color: #e0e0e0; font-family: 'Segoe UI', system-ui, sans-serif; line-height: 1.6; padding: 40px 20px; }
+  .container { max-width: 960px; margin: 0 auto; }
+  .header { border-bottom: 2px solid #D4263E; padding-bottom: 24px; margin-bottom: 24px; }
+  .header h1 { font-size: 28px; font-weight: 600; color: #fff; letter-spacing: 1px; }
+  .header h1 span { color: #D4263E; }
+  .header .subtitle { font-size: 14px; color: #888; margin-top: 4px; }
+  .summary { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 24px; }
+  .card { background: #111; border: 1px solid #1a1a1a; border-radius: 8px; padding: 16px; text-align: center; }
+  .card .number { font-size: 32px; font-weight: 700; }
+  .card .label { font-size: 11px; color: #888; margin-top: 4px; text-transform: uppercase; letter-spacing: 1px; }
+  .score-good { color: #22c55e; }
+  .score-warn { color: #EF9F27; }
+  .score-bad { color: #E24B4A; }
+  .score-crit { color: #D4263E; }
+  .tabs { display: flex; gap: 0; border-bottom: 1px solid #1a1a1a; margin-bottom: 24px; }
+  .tab { padding: 12px 24px; font-size: 14px; color: #888; cursor: pointer; border-bottom: 2px solid transparent; user-select: none; }
+  .tab:hover { color: #e0e0e0; }
+  .tab.active { color: #D4263E; border-bottom-color: #D4263E; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  .scan-info { background: #111; border: 1px solid #1a1a1a; border-radius: 8px; padding: 20px; margin-bottom: 24px; font-size: 14px; }
+  .scan-info table { width: 100%; }
+  .scan-info td { padding: 6px 0; border-bottom: 1px solid #1a1a1a; }
+  .scan-info td:first-child { color: #888; width: 160px; }
+  .section-title { font-size: 16px; font-weight: 600; color: #fff; margin: 24px 0 12px; }
+  .finding-card { background: #111; border: 1px solid #1a1a1a; border-radius: 8px; padding: 20px; margin-bottom: 16px; border-left: 3px solid #888; }
+  .finding-card.sev-critical { border-left-color: #E24B4A; }
+  .finding-card.sev-high { border-left-color: #D85A30; }
+  .finding-card.sev-medium { border-left-color: #EF9F27; }
+  .finding-card.sev-low { border-left-color: #97C459; }
+  .finding-sev { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; margin-right: 8px; }
+  .sev-critical { background: #501313; color: #F09595; }
+  .sev-high { background: #4A1B0C; color: #F0997B; }
+  .sev-medium { background: #412402; color: #FAC775; }
+  .sev-low { background: #173404; color: #C0DD97; }
+  .finding-title { font-size: 14px; font-weight: 600; color: #fff; }
+  .finding-resource { font-size: 12px; color: #D4263E; font-family: 'Courier New', monospace; margin-top: 4px; }
+  .finding-section { margin-top: 12px; }
+  .finding-section-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+  .finding-section-text { font-size: 13px; color: #ccc; }
+  .finding-cmd { background: #0a0a0a; border-radius: 6px; padding: 10px 12px; margin-top: 8px; font-family: 'Courier New', monospace; font-size: 12px; color: #22c55e; white-space: pre-wrap; word-break: break-all; }
+  .finding-meta { display: flex; gap: 12px; margin-top: 12px; }
+  .meta-pill { background: #1a1a1a; padding: 3px 10px; border-radius: 4px; font-size: 11px; color: #888; }
+  .fix-first { background: #111; border: 1px solid #D4263E; border-radius: 8px; padding: 20px; margin-bottom: 24px; }
+  .fix-first h3 { color: #D4263E; font-size: 16px; margin-bottom: 12px; }
+  .fix-item { padding: 10px 0; border-bottom: 1px solid #1a1a1a; font-size: 14px; display: flex; justify-content: space-between; }
+  .fix-item:last-child { border-bottom: none; }
+  .service-bar { background: #111; border: 1px solid #1a1a1a; border-radius: 8px; padding: 16px 20px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+  .service-name { font-weight: 600; color: #fff; }
+  .service-counts { display: flex; gap: 8px; }
+  .no-data { color: #555; font-size: 14px; padding: 20px 0; font-style: italic; }
+  .footer { margin-top: 60px; padding-top: 20px; border-top: 1px solid #1a1a1a; text-align: center; font-size: 12px; color: #555; }
+  .footer a { color: #D4263E; text-decoration: none; }
+  @media (max-width: 640px) { .summary { grid-template-columns: repeat(2, 1fr); } }
+  @media print {
+    body { background: #fff; color: #111; }
+    .tab-content { display: block !important; }
+    .tabs { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>ATARUS <span>CLOUD</span></h1>
+    <div class="subtitle">Cloud Security Assessment Report</div>
+  </div>
+
+  <div class="summary">
+    <div class="card">
+      <div class="number {{ 'score-good' if result.overall_score >= 80 else 'score-warn' if result.overall_score >= 50 else 'score-bad' }}">{{ result.overall_score }}</div>
+      <div class="label">Score /100</div>
+    </div>
+    <div class="card">
+      <div class="number score-crit">{{ crits | length }}</div>
+      <div class="label">Critical</div>
+    </div>
+    <div class="card">
+      <div class="number score-bad">{{ highs | length }}</div>
+      <div class="label">High</div>
+    </div>
+    <div class="card">
+      <div class="number score-warn">{{ meds | length }}</div>
+      <div class="label">Medium</div>
+    </div>
+    <div class="card">
+      <div class="number score-good">{{ lows | length }}</div>
+      <div class="label">Low</div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('overview')">Overview</div>
+    <div class="tab" onclick="switchTab('findings')">Findings</div>
+    <div class="tab" onclick="switchTab('remediation')">Remediation</div>
+  </div>
+
+  <div id="tab-overview" class="tab-content active">
+    <div class="scan-info">
+      <table>
+        <tr><td>Provider</td><td>{{ result.provider | upper }}</td></tr>
+        <tr><td>Account</td><td>{{ result.account_id }}{% if result.account_alias %} ({{ result.account_alias }}){% endif %}</td></tr>
+        <tr><td>Started</td><td>{{ result.started_at }}</td></tr>
+        <tr><td>Completed</td><td>{{ result.finished_at }}</td></tr>
+        <tr><td>Total findings</td><td>{{ result.total_findings }}</td></tr>
+        <tr><td>Tool</td><td>atarus-cloud v0.1.0</td></tr>
+      </table>
+    </div>
+
+    {% set top_fixes = (crits + highs)[:5] %}
+    {% if top_fixes %}
+    <div class="fix-first">
+      <h3>Fix these first</h3>
+      {% for f in top_fixes %}
+      <div class="fix-item">
+        <span><span class="finding-sev sev-{{ f.severity }}">{{ f.severity }}</span> {{ f.observation[:70] }}{% if f.observation|length > 70 %}...{% endif %}</span>
+        <span class="meta-pill">{{ f.remediation_effort }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if result.services %}
+    <div class="section-title">Findings by service</div>
+    {% for svc in result.services %}
+    <div class="service-bar">
+      <span class="service-name">{{ svc.name }}</span>
+      <div class="service-counts">
+        {% if svc.critical %}<span class="finding-sev sev-critical">{{ svc.critical }} critical</span>{% endif %}
+        {% if svc.high %}<span class="finding-sev sev-high">{{ svc.high }} high</span>{% endif %}
+        {% if svc.medium %}<span class="finding-sev sev-medium">{{ svc.medium }} medium</span>{% endif %}
+        {% if svc.low %}<span class="finding-sev sev-low">{{ svc.low }} low</span>{% endif %}
+      </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+  </div>
+
+  <div id="tab-findings" class="tab-content">
+    {% for severity, findings_list, label in [('critical', crits, 'Critical'), ('high', highs, 'High'), ('medium', meds, 'Medium'), ('low', lows, 'Low')] %}
+    {% if findings_list %}
+    <div class="section-title">{{ label }}</div>
+    {% for f in findings_list %}
+    <div class="finding-card sev-{{ severity }}">
+      <span class="finding-sev sev-{{ severity }}">{{ severity }}</span>
+      <span class="finding-title">{{ f.service }}: {{ f.resource_name }}</span>
+      <div class="finding-resource">{{ f.resource_id }}</div>
+      <div class="finding-section">
+        <div class="finding-section-label">Observation</div>
+        <div class="finding-section-text">{{ f.observation }}</div>
+      </div>
+      <div class="finding-section">
+        <div class="finding-section-label">Risk</div>
+        <div class="finding-section-text">{{ f.risk }}</div>
+      </div>
+      <div class="finding-section">
+        <div class="finding-section-label">Recommendation</div>
+        <div class="finding-section-text">{{ f.recommendation }}</div>
+      </div>
+      {% if f.remediation_cmd %}
+      <div class="finding-cmd">{{ f.remediation_cmd }}</div>
+      {% endif %}
+      <div class="finding-meta">
+        {% if f.remediation_effort %}<span class="meta-pill">{{ f.remediation_effort }}</span>{% endif %}
+        {% for c in f.compliance %}<span class="meta-pill">{{ c }}</span>{% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endfor %}
+    {% if not result.findings %}
+    <div class="no-data">No findings detected. Your cloud environment looks clean.</div>
+    {% endif %}
+  </div>
+
+  <div id="tab-remediation" class="tab-content">
+    {% set actionable = [] %}
+    {% for f in crits + highs + meds + lows %}
+    {% if f.remediation_cmd and not f.remediation_cmd.startswith('#') %}
+    {% if actionable.append(f) %}{% endif %}
+    {% endif %}
+    {% endfor %}
+
+    {% if actionable %}
+    <div class="scan-info">
+      <table>
+        <tr><td>Actionable fixes</td><td>{{ actionable | length }}</td></tr>
+        <tr><td>Script</td><td>remediation-{{ result.account_id }}.sh</td></tr>
+      </table>
+    </div>
+
+    {% for f in actionable %}
+    <div class="finding-card sev-{{ f.severity }}">
+      <span class="finding-sev sev-{{ f.severity }}">{{ f.severity }}</span>
+      <span class="finding-title">{{ f.resource_name }}</span>
+      <div class="finding-section">
+        <div class="finding-section-label">Fix</div>
+        <div class="finding-section-text">{{ f.recommendation }}</div>
+      </div>
+      <div class="finding-cmd">{{ f.remediation_cmd }}</div>
+      {% if f.remediation_effort %}<div class="finding-meta"><span class="meta-pill">{{ f.remediation_effort }}</span></div>{% endif %}
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="no-data">No CLI-actionable remediation steps available.</div>
+    {% endif %}
+  </div>
+
+  <div class="footer">
+    Generated by <a href="https://atarussecurity.com">Atarus Offensive Security</a>
+  </div>
+</div>
+<script>
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+  document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
+  document.getElementById('tab-' + name).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+</body>
+</html>
