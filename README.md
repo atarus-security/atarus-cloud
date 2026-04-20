@@ -7,57 +7,24 @@ Audit your AWS and Azure environments. Get findings in plain English with observ
 ## Supported providers
 
 - **AWS** (9 modules): IAM, S3, EC2, CloudTrail, RDS, VPC, Lambda, KMS, Secrets Manager
-- **Azure** (4 modules): Identity, Storage, Network, Compute
+- **Azure** (7 modules): Identity, Storage, Network, Compute, Key Vault, SQL, Cosmos DB
 - GCP (planned)
 
-## What it does
+## Why atarus-cloud
 
-**AWS audit modules:**
+Cloud scanners have been around for years. ScoutSuite dumps 200 findings with no context. Prowler outputs CIS control numbers nobody remembers. Commercial tools charge thousands and produce reports no one reads.
 
-- IAM: Root MFA, user MFA, access key age, password policy, admin users, unused accounts
-- S3: Public access blocks, encryption, versioning, access logging
-- EC2: Security group exposure, public IPs, EBS encryption
-- CloudTrail: Multi-region logging, log file validation, active logging status
-- RDS: Public databases, encryption, auto minor version upgrade, backup retention
-- VPC: Default VPC usage, flow logs
-- Lambda: Environment variable secrets, deprecated runtimes, function resource policies
-- KMS: Customer-managed key rotation, overly permissive key policies
-- Secrets Manager: Automatic rotation, secret age, resource policies, deletion protection
+atarus-cloud was built by pentesters who were tired of delivering audit output pretending to be security work.
 
-**Azure audit modules:**
+**Every finding reads like a pen test report.** Observation of what was found. Risk of what an attacker could do. Recommendation with the exact CLI command to fix it. No CIS control numbers unless the client asks.
 
-- Identity: Owner role assignments, direct user privilege, custom roles with wildcards
-- Storage: HTTPS enforcement, TLS version, public network access, blob anonymous access, container public access
-- Network: NSG rules allowing admin ports from internet, public IPs
-- Compute: Disk encryption, managed disks, boot diagnostics
+**Attack paths chain findings into real scenarios.** Instead of listing "no MFA" and "admin access" separately, the report tells you how an attacker combines them into full account takeover.
 
-**Attack path correlation:**
+**The executive summary auto-generates.** Plain language for the CISO or city manager. Security posture, key risks, recommended actions. No translator needed.
 
-Findings are chained into realistic attack narratives. Instead of listing "no MFA" and "admin access" as separate findings, atarus-cloud shows you the scenario: "Full account takeover via username. Attacker obtains password, logs in without MFA, inherits admin access, disables logging, exfiltrates data."
+**Compliance mapping is built in.** CIS AWS, CIS Azure, and NIST 800-53 controls mapped to every finding. The Compliance tab shows failed controls grouped by framework.
 
-**Executive summary:**
-
-Auto-generated plain-language summary for non-technical stakeholders. Three sections: Security posture, Key risks, Recommended actions.
-
-**Compliance mapping:**
-
-Every finding maps to CIS AWS Foundations Benchmark, CIS Azure Benchmark, and NIST 800-53 Rev 5 controls. The Compliance tab shows failed controls grouped by framework and category.
-
-**Every finding includes:**
-
-- Observation: What was found
-- Risk: What an attacker could do
-- Recommendation: How to fix it
-- Remediation command: The exact CLI command to fix it (AWS CLI or Azure CLI)
-- Remediation effort: How long it takes
-- Compliance mapping: CIS and NIST references
-
-**Output formats:**
-
-- HTML report with tabbed navigation: Overview, Executive Summary, Attack Paths, Findings, Compliance, Remediation
-- PDF with Atarus branding, page breaks per section, confidential footer
-- JSON for integration with other tools
-- Runnable remediation script with all CLI fixes ordered by severity
+**The remediation script actually runs.** Review it, approve it, execute it. Fix 40 findings with one script instead of clicking through the console.
 
 ## Install
 
@@ -72,24 +39,24 @@ pip install -e .
 ## Requirements
 
 **For AWS:**
-- AWS CLI configured with credentials (`aws configure`)
-- IAM permissions to read account configuration (SecurityAudit managed policy works)
+- AWS CLI configured (`aws configure`)
+- IAM permissions to read account config (SecurityAudit managed policy works)
 
 **For Azure:**
 - Azure CLI installed and logged in (`az login`)
 - Reader role on the subscription being scanned
 
-**Python 3.10+ required for both.**
+**Python 3.10+ required.**
 
 ## Usage
 
 ### AWS
 
 ```bash
-# Full audit with HTML report
+# Full audit
 atarus-cloud -p aws
 
-# All output formats
+# All output formats (HTML, JSON, PDF, remediation.sh)
 atarus-cloud -p aws --format all
 
 # Specific AWS profile
@@ -102,7 +69,7 @@ atarus-cloud -p aws --region us-east-1
 ### Azure
 
 ```bash
-# Full audit using default subscription from az login
+# Full audit using default subscription
 atarus-cloud -p azure
 
 # All output formats
@@ -112,7 +79,7 @@ atarus-cloud -p azure --format all
 atarus-cloud -p azure --subscription <SUBSCRIPTION_ID>
 ```
 
-### Module selection (both providers)
+### Module selection
 
 ```bash
 # Skip specific modules
@@ -121,62 +88,83 @@ atarus-cloud -p aws --skip rds,vpc
 # Only run specific modules
 atarus-cloud -p azure --only storage,network
 
-# List all modules across all providers
+# List all modules
 atarus-cloud --list-modules
 
 # Version
 atarus-cloud --version
 ```
 
-## Modules
+## What it checks
 
-### AWS
+### AWS modules (9)
 
-| Key | Module | What it checks |
+| Key | Service | What it checks |
 |---|---|---|
-| iam | IAM audit | Users, MFA, access keys, password policy, admin access |
-| s3 | S3 audit | Bucket policies, encryption, versioning, logging |
-| ec2 | EC2 audit | Security groups, public IPs, EBS encryption |
-| cloudtrail | CloudTrail audit | Logging gaps, multi-region, validation |
-| rds | RDS audit | Public databases, encryption, backups |
-| vpc | VPC audit | Default VPCs, flow logs |
-| lambda | Lambda audit | Env var secrets, deprecated runtimes, policies |
-| kms | KMS audit | Key rotation, resource policies |
-| secrets | Secrets Manager audit | Rotation, age, resource policies |
+| iam | IAM | Users, MFA, access keys, password policy, admin access |
+| s3 | S3 | Bucket policies, encryption, versioning, logging |
+| ec2 | EC2 | Security groups, public IPs, EBS encryption |
+| cloudtrail | CloudTrail | Logging gaps, multi-region, validation |
+| rds | RDS | Public databases, encryption, backups |
+| vpc | VPC | Default VPCs, flow logs |
+| lambda | Lambda | Env var secrets, deprecated runtimes, policies |
+| kms | KMS | Key rotation, resource policies |
+| secrets | Secrets Manager | Rotation, age, resource policies |
 
-### Azure
+### Azure modules (7)
 
-| Key | Module | What it checks |
+| Key | Service | What it checks |
 |---|---|---|
-| identity | Identity audit | Owner roles, user vs group assignments, custom role permissions |
-| storage | Storage audit | HTTPS, TLS, public access, encryption, blob containers |
-| network | Network audit | NSG rules, dangerous ports, public IPs |
-| compute | Compute audit | Disk encryption, managed disks, boot diagnostics |
+| identity | Identity | Owner roles, direct assignments, custom roles |
+| storage | Storage | HTTPS, TLS, public access, encryption, containers |
+| network | Network | NSG rules, dangerous ports, public IPs |
+| compute | Compute | Disk encryption, managed disks, boot diagnostics |
+| keyvault | Key Vault | Soft delete, purge protection, network access, RBAC |
+| sql | SQL | Public access, firewall rules, TLS, auditing, Entra admin |
+| cosmosdb | Cosmos DB | Public access, firewall, local auth, failover |
 
-## What sets it apart
+## Output
 
-**Observation, Risk, Recommendation format.** Every finding reads like a pen test report, not a compliance dump. Your client or their CISO can understand it without Googling CIS benchmark numbers.
+### HTML report
 
-**Attack path chaining.** No other cloud scanner connects the dots between findings. atarus-cloud tells you how an attacker would combine misconfigurations to achieve real impact. Fix any finding in the chain to break the path.
+Tabbed interface: Overview, Executive Summary, Attack Paths, Findings, Compliance, Remediation. Responsive, dark-themed, ready to share.
 
-**Auto-generated executive summary.** Plain-language posture analysis, key risks, and recommended actions. Ready for leadership review without a translator.
+### PDF report
 
-**Compliance mapping.** CIS AWS, CIS Azure, and NIST 800-53 Rev 5 coverage built into every report. Failed controls surface as their own section with the underlying findings linked.
+Every section on its own page. Atarus branding, confidential footer, page numbers. Ready to attach to a client email.
 
-**Auto-generated remediation script.** Review it, approve it, run it. Fix dozens of findings with one script instead of clicking through the console.
+### JSON
 
-**Clean, branded output.** Hand the PDF directly to a client. Every page has a confidential footer and page numbers.
+Machine-readable output with every finding, attack path, compliance mapping, and executive summary field. Integrate with SIEM, ticketing, or custom dashboards.
+
+### remediation.sh
+
+Auto-generated shell script with every actionable CLI command, ordered by severity. Review, approve, run.
+
+## Every finding includes
+
+- **Observation** - What was found
+- **Risk** - What an attacker could do with it
+- **Recommendation** - How to fix it
+- **Remediation command** - The exact CLI to run (AWS CLI or Azure CLI)
+- **Remediation effort** - How long the fix takes
+- **Compliance mapping** - CIS and NIST control references
+
+## Compliance frameworks
+
+- CIS AWS Foundations Benchmark 2.0 (18 controls mapped)
+- CIS Azure Foundations Benchmark 2.0 (21 controls mapped)
+- NIST 800-53 Rev 5 (14 controls mapped, shared across AWS and Azure)
 
 ## Roadmap
 
 - GCP provider (gcloud authentication, IAM, storage, compute)
 - Multi-account AWS / multi-subscription Azure support
-- ECR and ECS audit modules (AWS containers)
-- API Gateway audit module (AWS)
-- EKS / AKS audit modules (managed Kubernetes)
-- Azure Key Vault module
-- Azure SQL / Cosmos DB modules
-- Additional compliance frameworks (PCI DSS, HIPAA)
+- ECR, ECS, EKS audit modules (AWS containers)
+- AKS audit module (Azure Kubernetes)
+- API Gateway audit modules (AWS and Azure)
+- Additional compliance frameworks (PCI DSS, HIPAA, SOC 2)
+- Scan comparison mode (diff two scans over time)
 
 ## Part of the atarus- tool suite
 
@@ -193,3 +181,5 @@ MIT License. See LICENSE for details.
 ## Built by
 
 [Atarus Offensive Security LLC](https://atarussecurity.com)
+
+Critical infrastructure security. SoCal-based. Real pentesters, real engagements, real tools.
