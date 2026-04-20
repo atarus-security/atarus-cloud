@@ -71,6 +71,10 @@
   .no-data { color: #555; font-size: 14px; padding: 24px 0; font-style: italic; text-align: center; }
   .footer { margin-top: 60px; padding-top: 20px; border-top: 1px solid #1a1a1a; text-align: center; font-size: 12px; color: #555; }
   .footer a { color: #D4263E; text-decoration: none; }
+
+  .summary-section { background: #111; border: 1px solid #1a1a1a; border-radius: 8px; padding: 22px 26px; margin-bottom: 18px; }
+  .summary-label { font-size: 10px; color: #D4263E; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; margin-bottom: 10px; }
+  .summary-text { font-size: 14px; color: #ccc; line-height: 1.8; }
   @media (max-width: 640px) { .summary { grid-template-columns: repeat(2, 1fr); } }
   @media print {
     body { background: #fff; color: #111; }
@@ -111,6 +115,7 @@
 
   <div class="tabs">
     <div class="tab active" onclick="switchTab('overview')">Overview</div>
+    {% if summary %}<div class="tab" onclick="switchTab('summary')">Executive Summary</div>{% endif %}
     {% if attack_paths %}<div class="tab" onclick="switchTab('paths')">Attack Paths ({{ attack_paths | length }})</div>{% endif %}
     <div class="tab" onclick="switchTab('findings')">Findings</div>
     <div class="tab" onclick="switchTab('remediation')">Remediation</div>
@@ -125,7 +130,7 @@
         <tr><td>Completed</td><td>{{ result.finished_at }}</td></tr>
         <tr><td>Total findings</td><td>{{ result.total_findings }}</td></tr>
         <tr><td>Attack paths</td><td>{{ attack_paths | length }}</td></tr>
-        <tr><td>Tool</td><td>atarus-cloud v0.4.0</td></tr>
+        <tr><td>Tool</td><td>atarus-cloud v0.5.0</td></tr>
       </table>
     </div>
 
@@ -158,6 +163,30 @@
     {% endfor %}
     {% endif %}
   </div>
+
+  {% if summary %}
+  <div id="tab-summary" class="tab-content">
+    <p style="color:#888; font-size:13px; margin-bottom:24px; line-height:1.7;">A plain-language summary of the security assessment prepared for non-technical stakeholders. For detailed findings, see the Findings and Attack Paths sections.</p>
+    {% if summary.posture %}
+    <div class="summary-section">
+      <div class="summary-label">Security posture</div>
+      <div class="summary-text">{{ summary.posture }}</div>
+    </div>
+    {% endif %}
+    {% if summary.key_risks %}
+    <div class="summary-section">
+      <div class="summary-label">Key risks</div>
+      <div class="summary-text">{{ summary.key_risks }}</div>
+    </div>
+    {% endif %}
+    {% if summary.recommended_actions %}
+    <div class="summary-section">
+      <div class="summary-label">Recommended actions</div>
+      <div class="summary-text">{{ summary.recommended_actions }}</div>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
 
   {% if attack_paths %}
   <div id="tab-paths" class="tab-content">

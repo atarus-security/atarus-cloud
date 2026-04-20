@@ -4,10 +4,10 @@ from atarus_cloud.reports import html as html_report
 from atarus_cloud.models import AuditResult
 
 
-def generate(result: AuditResult, output_dir: str, attack_paths_list=None) -> str:
+def generate(result: AuditResult, output_dir: str, attack_paths_list=None, summary=None) -> str:
     os.makedirs(output_dir, exist_ok=True)
 
-    html_path = html_report.generate(result, output_dir, attack_paths_list=attack_paths_list)
+    html_path = html_report.generate(result, output_dir, attack_paths_list=attack_paths_list, summary=summary)
 
     with open(html_path, "r") as f:
         html_content = f.read()
@@ -23,14 +23,14 @@ def generate(result: AuditResult, output_dir: str, attack_paths_list=None) -> st
         padding-bottom: 10px; border-bottom: 2px solid #D4263E;
       }
       #tab-overview::before { content: "Overview"; }
+      #tab-summary::before { content: "Executive Summary"; }
       #tab-paths::before { content: "Attack Paths"; }
       #tab-findings::before { content: "Findings"; }
       #tab-remediation::before { content: "Remediation"; }
+      #tab-summary { page-break-before: always; }
       #tab-paths { page-break-before: always; }
       #tab-findings { page-break-before: always; }
       #tab-remediation { page-break-before: always; }
-      .header { margin-bottom: 30px; }
-      .summary { margin-bottom: 30px; }
       .scan-info td { color: #e0e0e0 !important; }
       .scan-info td:first-child { color: #888 !important; }
       .fix-item { color: #e0e0e0 !important; font-size: 13px; }
@@ -49,6 +49,9 @@ def generate(result: AuditResult, output_dir: str, attack_paths_list=None) -> st
       .path-narrative { color: #ccc !important; }
       .path-impact { color: #F09595 !important; }
       .path-step { color: #ccc !important; }
+      .summary-section { page-break-inside: avoid; margin-bottom: 22px; }
+      .summary-label { color: #D4263E !important; }
+      .summary-text { color: #ccc !important; }
       .footer { color: #555 !important; }
       .footer a { color: #D4263E !important; }
       @page {
