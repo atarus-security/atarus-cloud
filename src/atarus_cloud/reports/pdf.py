@@ -4,10 +4,10 @@ from atarus_cloud.reports import html as html_report
 from atarus_cloud.models import AuditResult
 
 
-def generate(result: AuditResult, output_dir: str, attack_paths_list=None, summary=None) -> str:
+def generate(result: AuditResult, output_dir: str, attack_paths_list=None, summary=None, compliance_data=None) -> str:
     os.makedirs(output_dir, exist_ok=True)
 
-    html_path = html_report.generate(result, output_dir, attack_paths_list=attack_paths_list, summary=summary)
+    html_path = html_report.generate(result, output_dir, attack_paths_list=attack_paths_list, summary=summary, compliance_data=compliance_data)
 
     with open(html_path, "r") as f:
         html_content = f.read()
@@ -26,10 +26,12 @@ def generate(result: AuditResult, output_dir: str, attack_paths_list=None, summa
       #tab-summary::before { content: "Executive Summary"; }
       #tab-paths::before { content: "Attack Paths"; }
       #tab-findings::before { content: "Findings"; }
+      #tab-compliance::before { content: "Compliance"; }
       #tab-remediation::before { content: "Remediation"; }
       #tab-summary { page-break-before: always; }
       #tab-paths { page-break-before: always; }
       #tab-findings { page-break-before: always; }
+      #tab-compliance { page-break-before: always; }
       #tab-remediation { page-break-before: always; }
       .scan-info td { color: #e0e0e0 !important; }
       .scan-info td:first-child { color: #888 !important; }
@@ -52,6 +54,10 @@ def generate(result: AuditResult, output_dir: str, attack_paths_list=None, summa
       .summary-section { page-break-inside: avoid; margin-bottom: 22px; }
       .summary-label { color: #D4263E !important; }
       .summary-text { color: #ccc !important; }
+      .compliance-stats { color: #e0e0e0 !important; }
+      .control-card { page-break-inside: avoid; }
+      .control-title { color: #fff !important; }
+      .control-meta { color: #888 !important; }
       .footer { color: #555 !important; }
       .footer a { color: #D4263E !important; }
       @page {

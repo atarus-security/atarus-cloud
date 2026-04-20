@@ -4,12 +4,12 @@ from rich.table import Table
 from atarus_cloud.runner import CloudRunner
 from atarus_cloud.providers.aws import auth as aws_auth
 from atarus_cloud.providers.aws import iam, s3, ec2, cloudtrail, rds, vpc, lambda_fn, kms, secrets
-from atarus_cloud.analysis import attack_paths, exec_summary
+from atarus_cloud.analysis import attack_paths, exec_summary, compliance
 from atarus_cloud.reports import html, json_export, pdf, remediation
 
 console = Console()
 
-VERSION = "0.6.0"
+VERSION = "0.7.0"
 
 BANNER = f"""
    ╔═╗╔╦╗╔═╗╦═╗╦ ╦╔═╗  ╔═╗╦  ╔═╗╦ ╦╔╦╗
@@ -91,17 +91,20 @@ def main(provider, profile, region, output, out_format, verbose, skip, only, lis
                 console.print(f"  [red]{p.severity.upper()}[/] {p.title}")
 
         summary = exec_summary.generate(result, attack_paths=paths)
+        compliance_data = compliance.analyze(result)
+
+        console.print(f"[bold white]Compliance:[/] CIS {compliance_data['cis_failed']}/{compliance_data['cis_total']} failed, NIST {compliance_data['nist_failed']}/{compliance_data['nist_total']} failed")
 
         if out_format in ("html", "all"):
-            report_path = html.generate(result, output, attack_paths_list=paths, summary=summary)
+            report_path = html.generate(result, output, attack_paths_list=paths, summary=summary, compliance_data=compliance_data)
             console.print(f"\n[bold green]HTML report:[/] {report_path}")
 
         if out_format in ("json", "all"):
-            json_path = json_export.generate(result, output, attack_paths_list=paths, summary=summary)
+            json_path = json_export.generate(result, output, attack_paths_list=paths, summary=summary, compliance_data=compliance_data)
             console.print(f"[bold green]JSON report:[/] {json_path}")
 
         if out_format in ("pdf", "all"):
-            pdf_path = pdf.generate(result, output, attack_paths_list=paths, summary=summary)
+            pdf_path = pdf.generate(result, output, attack_paths_list=paths, summary=summary, compliance_data=compliance_data)
             console.print(f"[bold green]PDF report:[/] {pdf_path}")
 
         rem_path = remediation.generate(result, output)

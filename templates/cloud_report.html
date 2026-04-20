@@ -75,6 +75,22 @@
   .summary-section { background: #111; border: 1px solid #1a1a1a; border-radius: 8px; padding: 22px 26px; margin-bottom: 18px; }
   .summary-label { font-size: 10px; color: #D4263E; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; margin-bottom: 10px; }
   .summary-text { font-size: 14px; color: #ccc; line-height: 1.8; }
+
+  .compliance-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 28px; }
+  .framework-card { background: #111; border: 1px solid #1a1a1a; border-radius: 8px; padding: 22px 24px; }
+  .framework-name { font-size: 13px; color: #D4263E; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; margin-bottom: 8px; }
+  .framework-score { font-size: 32px; font-weight: 700; color: #fff; line-height: 1.1; }
+  .framework-score .score-bad { color: #E24B4A; }
+  .framework-score .score-warn { color: #EF9F27; }
+  .framework-score .score-good { color: #22c55e; }
+  .framework-desc { font-size: 12px; color: #888; margin-top: 6px; }
+  .control-category-title { font-size: 14px; color: #D4263E; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; margin: 24px 0 12px; }
+  .control-card { background: #111; border: 1px solid #1a1a1a; border-left: 3px solid #E24B4A; border-radius: 8px; padding: 16px 20px; margin-bottom: 10px; }
+  .control-header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; }
+  .control-id { background: #1a1a1a; padding: 3px 10px; border-radius: 4px; font-size: 11px; color: #F09595; font-family: 'Courier New', monospace; font-weight: 600; }
+  .control-title { font-size: 14px; font-weight: 600; color: #fff; }
+  .control-meta { font-size: 12px; color: #888; }
+  .control-findings { font-size: 12px; color: #aaa; margin-top: 6px; }
   @media (max-width: 640px) { .summary { grid-template-columns: repeat(2, 1fr); } }
   @media print {
     body { background: #fff; color: #111; }
@@ -118,6 +134,7 @@
     {% if summary %}<div class="tab" onclick="switchTab('summary')">Executive Summary</div>{% endif %}
     {% if attack_paths %}<div class="tab" onclick="switchTab('paths')">Attack Paths ({{ attack_paths | length }})</div>{% endif %}
     <div class="tab" onclick="switchTab('findings')">Findings</div>
+    <div class="tab" onclick="switchTab('compliance')">Compliance</div>
     <div class="tab" onclick="switchTab('remediation')">Remediation</div>
   </div>
 
@@ -130,7 +147,9 @@
         <tr><td>Completed</td><td>{{ result.finished_at }}</td></tr>
         <tr><td>Total findings</td><td>{{ result.total_findings }}</td></tr>
         <tr><td>Attack paths</td><td>{{ attack_paths | length }}</td></tr>
-        <tr><td>Tool</td><td>atarus-cloud v0.6.0</td></tr>
+        {% if compliance %}<tr><td>CIS controls failed</td><td>{{ compliance.cis_failed }} of {{ compliance.cis_total }}</td></tr>
+        <tr><td>NIST controls failed</td><td>{{ compliance.nist_failed }} of {{ compliance.nist_total }}</td></tr>{% endif %}
+        <tr><td>Tool</td><td>atarus-cloud v0.7.0</td></tr>
       </table>
     </div>
 
@@ -250,7 +269,63 @@
     {% if not result.findings %}<div class="no-data">No findings detected.</div>{% endif %}
   </div>
 
-  <div id="tab-remediation" class="tab-content">
+
+  {% if compliance %}
+  <div id="tab-compliance" class="tab-content">
+    <p style="color:#888; font-size:13px; margin-bottom:20px; line-height:1.7;">Compliance mapping shows how identified findings map to CIS AWS Foundations Benchmark controls and NIST 800-53 Rev 5 controls. Controls listed as failed have at least one finding violating that control.</p>
+
+    <div class="compliance-stats">
+      <div class="framework-card">
+        <div class="framework-name">CIS AWS Benchmark</div>
+        <div class="framework-score"><span class="{{ 'score-good' if compliance.cis_failed == 0 else 'score-warn' if compliance.cis_failed <= 3 else 'score-bad' }}">{{ compliance.cis_failed }}</span> / {{ compliance.cis_total }}</div>
+        <div class="framework-desc">controls failed</div>
+      </div>
+      <div class="framework-card">
+        <div class="framework-name">NIST 800-53 Rev 5</div>
+        <div class="framework-score"><span class="{{ 'score-good' if compliance.nist_failed == 0 else 'score-warn' if compliance.nist_failed <= 3 else 'score-bad' }}">{{ compliance.nist_failed }}</span> / {{ compliance.nist_total }}</div>
+        <div class="framework-desc">controls failed</div>
+      </div>
+    </div>
+
+    {% if compliance.cis_by_category %}
+    <div class="section-title">CIS AWS Foundations Benchmark</div>
+    {% for category, controls in compliance.cis_by_category.items() %}
+    <div class="control-category-title">{{ category }}</div>
+    {% for c in controls %}
+    <div class="control-card">
+      <div class="control-header">
+        <span class="control-id">{{ c.control_id }}</span>
+        <span class="control-title">{{ c.title }}</span>
+      </div>
+      <div class="control-findings">{{ c.findings | length }} finding{{ 's' if c.findings|length != 1 else '' }} violating this control</div>
+    </div>
+    {% endfor %}
+    {% endfor %}
+    {% endif %}
+
+    {% if compliance.nist_by_category %}
+    <div class="section-title">NIST 800-53 Rev 5</div>
+    {% for category, controls in compliance.nist_by_category.items() %}
+    <div class="control-category-title">{{ category }}</div>
+    {% for c in controls %}
+    <div class="control-card">
+      <div class="control-header">
+        <span class="control-id">{{ c.control_id }}</span>
+        <span class="control-title">{{ c.title }}</span>
+      </div>
+      <div class="control-findings">{{ c.findings | length }} finding{{ 's' if c.findings|length != 1 else '' }} violating this control</div>
+    </div>
+    {% endfor %}
+    {% endfor %}
+    {% endif %}
+
+    {% if compliance.cis_failed == 0 and compliance.nist_failed == 0 %}
+    <div class="no-data">No compliance controls failed. Environment meets CIS and NIST control coverage.</div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+    <div id="tab-remediation" class="tab-content">
     {% set actionable = [] %}
     {% for f in crits + highs + meds + lows %}
     {% if f.remediation_cmd and not f.remediation_cmd.startswith('#') %}{% if actionable.append(f) %}{% endif %}{% endif %}
