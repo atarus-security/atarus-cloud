@@ -10,3 +10,5 @@ venv/
 *~
 output/
 .env
+build_*.sh
+polish.sh
