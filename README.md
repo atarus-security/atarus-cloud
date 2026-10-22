@@ -11,7 +11,11 @@ git clone https://github.com/atarus-security/atarus-cloud.git
 cd atarus-cloud
 python3 -m venv venv
 source venv/bin/activate
-pip install -e .
+pip install -e .   # Python 3.10+; installs the AWS and Azure SDKs
+
+# PDF export needs the Pango system libraries (HTML, JSON and the
+# remediation script work without them). On Debian or Kali:
+sudo apt install libpango-1.0-0 libpangoft2-1.0-0
 
 # AWS
 aws configure
@@ -407,7 +411,9 @@ Full machine-readable output with every finding, attack path, compliance mapping
 
 ### remediation.sh
 
-Auto-generated shell script with every actionable CLI command, ordered by severity (critical first). Each finding's remediation command is included with comments explaining what the command does and why. Review every command before running.
+Auto-generated shell script with every actionable CLI command, ordered by severity (critical first). Each command is preceded by comments with the finding, the resource and the estimated effort. Review every command before running.
+
+The script uses `set -e`, so it stops at the first failing command. Some commands contain placeholders you must edit first (for example `YOUR-LOG-BUCKET` in the CloudTrail fix). Resource names are inserted without shell quoting, so read the script rather than piping it to a shell.
 
 ## Compliance frameworks
 
@@ -441,7 +447,7 @@ AWS_MODULES = [
 
 Reinstall with `pip install -e .` and your module is now available via `--only yourmodule`.
 
-The module receives the running `AuditResult`, a `session` dict containing the cloud SDK clients, and a verbose flag. Mutate `result.findings` to add findings.
+The module receives the running `AuditResult`, a `session` (a boto3 `Session` for AWS; for Azure a dict with `credential`, `subscription_id` and `tenant_id`), and a verbose flag. Mutate `result.findings` to add findings.
 
 ## Roadmap
 
@@ -459,6 +465,19 @@ The module receives the running `AuditResult`, a `session` dict containing the c
 - **atarus-cloud** - Multi-cloud misconfiguration scanner (you are here)
 - **[atarus-phishcheck](https://github.com/atarus-security/atarus-phishcheck)** - Email security analyzer
 - **[atarus-report-kit](https://github.com/atarus-security/atarus-report-kit)** - Pentest report builder for juniors and students
+- **[atarus-webscan](https://github.com/atarus-security/atarus-webscan)** - Web application security scanner
+
+## Testing
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+Offline, standard library only; cloud APIs are faked. GitHub Actions runs the suite on every push. `constraints.txt` records the dependency versions the tests last passed with (`pip install -c constraints.txt -e .`).
+
+## Security
+
+See [SECURITY.md](SECURITY.md) to report a vulnerability.
 
 ## License
 
