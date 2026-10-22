@@ -1,10 +1,13 @@
 import os
-from weasyprint import HTML
 from atarus_cloud.reports import html as html_report
 from atarus_cloud.models import AuditResult
 
 
 def generate(result: AuditResult, output_dir: str, attack_paths_list=None, summary=None, compliance_data=None) -> str:
+    # Imported here so the CLI still runs (HTML/JSON) on hosts without the
+    # Pango system libraries WeasyPrint needs. Only PDF export requires them.
+    from weasyprint import HTML
+
     os.makedirs(output_dir, exist_ok=True)
 
     html_path = html_report.generate(result, output_dir, attack_paths_list=attack_paths_list, summary=summary, compliance_data=compliance_data)

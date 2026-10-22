@@ -159,8 +159,12 @@ def _finalize(runner, output, out_format):
         console.print(f"[bold green]JSON report:[/] {json_path}")
 
     if out_format in ("pdf", "all"):
-        pdf_path = pdf.generate(result, output, attack_paths_list=paths, summary=summary, compliance_data=compliance_data)
-        console.print(f"[bold green]PDF report:[/] {pdf_path}")
+        try:
+            pdf_path = pdf.generate(result, output, attack_paths_list=paths, summary=summary, compliance_data=compliance_data)
+            console.print(f"[bold green]PDF report:[/] {pdf_path}")
+        except (OSError, ImportError) as e:
+            console.print(f"[bold red]PDF report failed:[/] {str(e)[:160]}")
+            console.print("[dim]WeasyPrint needs the Pango system libraries. See README (Install).[/]")
 
     rem_path = remediation.generate(result, output)
     console.print(f"[bold green]Remediation script:[/] {rem_path}")
