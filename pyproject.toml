@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "atarus-cloud"
-version = "1.0.0"
-description = "Cloud security misconfiguration scanner by Atarus Offensive Security"
+version = "1.1.0"
+description = "Read-only cloud configuration review for AWS and Azure by Atarus Offensive Security"
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.10"
@@ -13,12 +13,17 @@ authors = [
     {name = "Atarus Offensive Security", email = "info@atarussecurity.com"},
 ]
 keywords = ["cloud", "security", "aws", "azure", "pentest", "misconfiguration"]
+# Base install covers AWS with HTML and JSON reports.
 dependencies = [
     "click>=8.0",
     "boto3>=1.28",
     "rich>=13.0",
     "jinja2>=3.1",
-    "weasyprint>=60.0",
+]
+
+[project.optional-dependencies]
+# Azure provider: pip install 'atarus-cloud[azure]'
+azure = [
     "azure-identity>=1.15",
     "azure-mgmt-subscription>=3.0",
     "azure-mgmt-storage>=21.0",
@@ -28,6 +33,13 @@ dependencies = [
     "azure-mgmt-keyvault>=10.0",
     "azure-mgmt-sql>=3.0",
     "azure-mgmt-cosmosdb>=9.0",
+]
+# PDF export: pip install 'atarus-cloud[pdf]' plus the Pango system libraries.
+pdf = [
+    "weasyprint>=60.0",
+]
+all = [
+    "atarus-cloud[azure,pdf]",
 ]
 
 [project.scripts]

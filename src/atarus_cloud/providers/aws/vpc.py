@@ -1,28 +1,29 @@
 from atarus_cloud.models import AuditResult, CloudFinding
+from atarus_cloud.providers.aws.common import q, region_of
 from atarus_cloud.runner import ModuleResult
 
 
 def run(result: AuditResult, session, verbose: bool) -> ModuleResult:
-    """Audit AWS VPC configuration"""
+    """Audit AWS VPC configuration in one region"""
 
     ec2 = session.client("ec2")
+    cov = result.recorder("vpc", "VPC", region_of(session))
     findings_before = len(result.findings)
 
-    _check_default_vpcs(ec2, result, verbose)
-    _check_flow_logs(ec2, result, verbose)
+    _check_default_vpcs(ec2, result, cov)
+    _check_flow_logs(ec2, result, cov)
 
     new_findings = len(result.findings) - findings_before
     return ModuleResult(success=True, message=f"{new_findings} findings")
 
 
-def _check_default_vpcs(ec2, result, verbose):
+def _check_default_vpcs(ec2, result, cov):
     try:
         vpcs = ec2.describe_vpcs(Filters=[{"Name": "is-default", "Values": ["true"]}])["Vpcs"]
 
         for vpc in vpcs:
             vpc_id = vpc["VpcId"]
 
-            sgs = ec2.describe_security_groups(Filters=[{"Name": "vpc-id", "Values": [vpc_id]}])["SecurityGroups"]
             enis = ec2.describe_network_interfaces(Filters=[{"Name": "vpc-id", "Values": [vpc_id]}])["NetworkInterfaces"]
 
             if enis:
@@ -34,7 +35,7 @@ def _check_default_vpcs(ec2, result, verbose):
                     observation=f"Default VPC '{vpc_id}' is in use with {len(enis)} network interface(s) attached.",
                     risk="Default VPCs have permissive security group rules and public subnets by default. Resources deployed here may be unintentionally exposed to the internet.",
                     recommendation="Migrate resources to a custom VPC with properly configured private subnets and security groups.",
-                    remediation_cmd=f"# Review resources in default VPC:\naws ec2 describe-network-interfaces --filters Name=vpc-id,Values={vpc_id} --query 'NetworkInterfaces[].Description'",
+                    remediation_cmd=f"# Review resources in default VPC:\naws ec2 describe-network-interfaces --filters {q('Name=vpc-id,Values=' + vpc_id)} --query 'NetworkInterfaces[].Description'",
                     remediation_effort="2 hours",
                     compliance=["CIS 5.3"],
                 ))
@@ -47,16 +48,16 @@ def _check_default_vpcs(ec2, result, verbose):
                     observation=f"Default VPC '{vpc_id}' exists but has no resources attached.",
                     risk="Unused default VPCs are unnecessary attack surface. Accidental deployments to this VPC would use permissive default security groups.",
                     recommendation=f"Delete the unused default VPC '{vpc_id}' to prevent accidental use.",
-                    remediation_cmd=f"# Delete default VPC (ensure no resources first):\n# aws ec2 delete-vpc --vpc-id {vpc_id}",
+                    remediation_cmd=f"# Delete default VPC (ensure no resources first):\n# aws ec2 delete-vpc --vpc-id {q(vpc_id)}",
                     remediation_effort="10 minutes",
                     compliance=["CIS 5.3"],
                 ))
+        cov.checked("default VPC in use", f"{len(vpcs)} default VPCs")
     except Exception as e:
-        if verbose:
-            print(f"  Default VPC check error: {e}")
+        cov.not_run("default VPC in use", e)
 
 
-def _check_flow_logs(ec2, result, verbose):
+def _check_flow_logs(ec2, result, cov):
     try:
         vpcs = ec2.describe_vpcs()["Vpcs"]
 
@@ -82,10 +83,10 @@ def _check_flow_logs(ec2, result, verbose):
                     observation=f"VPC '{display}' ({vpc_id}) does not have flow logs enabled.",
                     risk="Without flow logs, network traffic patterns cannot be analyzed. Unauthorized access, data exfiltration, or lateral movement will not be visible in logs.",
                     recommendation=f"Enable VPC flow logs for '{vpc_id}' with delivery to CloudWatch Logs or S3.",
-                    remediation_cmd=f"aws ec2 create-flow-logs --resource-type VPC --resource-ids {vpc_id} --traffic-type ALL --log-destination-type cloud-watch-logs --log-group-name /aws/vpc/flowlogs/{vpc_id}",
+                    remediation_cmd=f"aws ec2 create-flow-logs --resource-type VPC --resource-ids {q(vpc_id)} --traffic-type ALL --log-destination-type cloud-watch-logs --log-group-name {q('/aws/vpc/flowlogs/' + vpc_id)}",
                     remediation_effort="15 minutes",
                     compliance=["CIS 3.9"],
                 ))
+        cov.checked("VPC flow logs", f"{len(vpcs)} VPCs")
     except Exception as e:
-        if verbose:
-            print(f"  Flow logs check error: {e}")
+        cov.not_run("VPC flow logs", e)

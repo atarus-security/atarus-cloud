@@ -1,16 +1,18 @@
 import os
 from atarus_cloud.reports import html as html_report
-from atarus_cloud.models import AuditResult
+from atarus_cloud.models import AuditResult, file_stem
 
 
-def generate(result: AuditResult, output_dir: str, attack_paths_list=None, summary=None, compliance_data=None) -> str:
-    # Imported here so the CLI still runs (HTML/JSON) on hosts without the
-    # Pango system libraries WeasyPrint needs. Only PDF export requires them.
+def generate(result: AuditResult, output_dir: str, attack_paths_list=None, summary=None,
+             compliance_data=None, remediation_path=None) -> str:
+    # Imported here: WeasyPrint is the optional [pdf] extra and needs the Pango
+    # system libraries. HTML and JSON reports never touch it.
     from weasyprint import HTML
 
     os.makedirs(output_dir, exist_ok=True)
 
-    html_path = html_report.generate(result, output_dir, attack_paths_list=attack_paths_list, summary=summary, compliance_data=compliance_data)
+    html_path = html_report.generate(result, output_dir, attack_paths_list=attack_paths_list, summary=summary,
+                                     compliance_data=compliance_data, remediation_path=remediation_path)
 
     with open(html_path, "r") as f:
         html_content = f.read()
@@ -30,14 +32,17 @@ def generate(result: AuditResult, output_dir: str, attack_paths_list=None, summa
       #tab-paths::before { content: "Attack Paths"; }
       #tab-findings::before { content: "Findings"; }
       #tab-compliance::before { content: "Compliance"; }
+      #tab-coverage::before { content: "Coverage"; }
       #tab-remediation::before { content: "Remediation"; }
       #tab-summary { page-break-before: always; }
       #tab-paths { page-break-before: always; }
       #tab-findings { page-break-before: always; }
       #tab-compliance { page-break-before: always; }
+      #tab-coverage { page-break-before: always; }
       #tab-remediation { page-break-before: always; }
       .scan-info td { color: #e0e0e0 !important; }
       .scan-info td:first-child { color: #888 !important; }
+      .coverage-table td, .coverage-table th { color: #e0e0e0 !important; }
       .fix-item { color: #e0e0e0 !important; font-size: 13px; }
       .service-name { color: #fff !important; }
       .section-title { color: #fff !important; font-size: 18px; margin: 30px 0 16px; padding-bottom: 6px; border-bottom: 1px solid #222; }
@@ -85,7 +90,7 @@ def generate(result: AuditResult, output_dir: str, attack_paths_list=None, summa
 
     html_content = html_content.replace("</head>", pdf_css + "</head>")
 
-    pdf_path = os.path.join(output_dir, f"atarus-cloud-{result.account_id}.pdf")
+    pdf_path = os.path.join(output_dir, f"atarus-cloud-{file_stem(result.account_id)}.pdf")
     HTML(string=html_content).write_pdf(pdf_path)
 
     return pdf_path

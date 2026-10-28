@@ -101,8 +101,9 @@ class AnalysisAndReportTests(unittest.TestCase):
             with open(sh) as f:
                 script = f.read()
             self.assertTrue(script.startswith("#!/bin/bash"))
-            self.assertIn("aws iam delete-access-key", script)
-            self.assertTrue(os.access(sh, os.X_OK))
+            self.assertIn("# aws iam delete-access-key", script)
+            # Since 1.1.0 the script is written non-executable with every command commented out.
+            self.assertFalse(os.access(sh, os.X_OK))
 
 
 class CliTests(unittest.TestCase):

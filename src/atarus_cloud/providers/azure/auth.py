@@ -1,10 +1,18 @@
-import subprocess
+"""Azure authentication through the Azure CLI's login.
+
+The Azure SDK is an optional extra (pip install 'atarus-cloud[azure]'), so the
+SDK imports live inside the functions. cli.py checks the packages are present
+before calling anything here and prints the install hint if they are not.
+"""
 import json
-from azure.identity import AzureCliCredential
-from azure.mgmt.subscription import SubscriptionClient
+import subprocess
 
 
 def get_credential():
+    try:
+        from azure.identity import AzureCliCredential
+    except ImportError as e:
+        raise SystemExit(f"Azure SDK not installed ({e}). Install it with: pip install 'atarus-cloud[azure]'")
     try:
         cred = AzureCliCredential()
         cred.get_token("https://management.azure.com/.default")
@@ -28,6 +36,7 @@ def _get_tenant_from_az_cli(subscription_id: str) -> str:
 
 
 def get_subscriptions(credential) -> list:
+    from azure.mgmt.subscription import SubscriptionClient
     try:
         client = SubscriptionClient(credential)
         subs = []

@@ -1,5 +1,5 @@
-from azure.mgmt.network import NetworkManagementClient
-from atarus_cloud.models import AuditResult, CloudFinding
+from atarus_cloud.models import AuditResult, CloudFinding, SUBSCRIPTION
+from atarus_cloud.providers.azure.common import q, resource_group_of, sdk_missing
 from atarus_cloud.runner import ModuleResult
 
 
@@ -10,15 +10,23 @@ DANGEROUS_PORTS = {
 }
 
 
+def _client(credential, subscription_id):
+    from azure.mgmt.network import NetworkManagementClient
+    return NetworkManagementClient(credential, subscription_id)
+
+
 def run(result: AuditResult, session, verbose: bool) -> ModuleResult:
     """Audit Azure network security groups and public IPs"""
 
     credential = session["credential"]
     subscription_id = session["subscription_id"]
+    cov = result.recorder("network", "Network", SUBSCRIPTION)
     findings_before = len(result.findings)
 
     try:
-        client = NetworkManagementClient(credential, subscription_id)
+        client = _client(credential, subscription_id)
+    except ImportError as e:
+        return ModuleResult(success=False, message=sdk_missing(e))
     except Exception as e:
         return ModuleResult(success=False, message=f"Cannot create network client: {e}")
 
@@ -28,34 +36,35 @@ def run(result: AuditResult, session, verbose: bool) -> ModuleResult:
         return ModuleResult(success=False, message=f"Cannot list NSGs: {e}")
 
     for nsg in nsgs:
-        _check_nsg_rules(nsg, result, verbose)
+        _check_nsg_rules(nsg, result)
+    cov.checked("NSG inbound rules open to the internet", f"{len(nsgs)} network security groups")
 
     try:
         public_ips = list(client.public_ip_addresses.list_all())
-        if public_ips:
-            for ip in public_ips:
-                if ip.ip_address:
-                    result.add_finding(CloudFinding(
-                        service="Network",
-                        resource_id=ip.id,
-                        resource_name=ip.name,
-                        severity="low",
-                        observation=f"Public IP '{ip.name}' allocated: {ip.ip_address}.",
-                        risk="Public IPs expand attack surface. Any resource attached to a public IP is reachable from the internet and subject to scanning, brute force, and targeted attacks.",
-                        recommendation=f"Review if '{ip.name}' requires public exposure. Consider Azure Bastion or private endpoints as alternatives.",
-                        remediation_cmd=f"# Review attached resource via portal: Public IP address > Associated resource",
-                        remediation_effort="30 minutes",
-                        provider="azure",
-                    ))
+        for ip in public_ips:
+            if ip.ip_address:
+                result.add_finding(CloudFinding(
+                    service="Network",
+                    resource_id=ip.id,
+                    resource_name=ip.name,
+                    severity="low",
+                    observation=f"Public IP '{ip.name}' allocated: {ip.ip_address}.",
+                    risk="Public IPs expand attack surface. Any resource attached to a public IP is reachable from the internet and subject to scanning, brute force, and targeted attacks.",
+                    recommendation=f"Review if '{ip.name}' requires public exposure. Consider Azure Bastion or private endpoints as alternatives.",
+                    remediation_cmd="# Review attached resource via portal: Public IP address > Associated resource",
+                    remediation_effort="30 minutes",
+                    provider="azure",
+                ))
+        cov.checked("allocated public IP addresses", f"{len(public_ips)} public IPs")
     except Exception as e:
-        if verbose:
-            print(f"  Public IP check error: {e}")
+        cov.not_run("allocated public IP addresses", e)
 
     new_findings = len(result.findings) - findings_before
     return ModuleResult(success=True, message=f"Checked {len(nsgs)} NSGs, {new_findings} findings")
 
 
-def _check_nsg_rules(nsg, result, verbose):
+def _check_nsg_rules(nsg, result):
+    rg = resource_group_of(nsg.id)
     for rule in (nsg.security_rules or []):
         if rule.access != "Allow" or rule.direction != "Inbound":
             continue
@@ -113,6 +122,7 @@ def _check_nsg_rules(nsg, result, verbose):
             if port in DANGEROUS_PORTS:
                 port_name = DANGEROUS_PORTS[port]
                 severity = "critical" if port in (22, 3389) else "high"
+                rg_arg = q(rg) if rg else "<RG>"
                 result.add_finding(CloudFinding(
                     service="Network",
                     resource_id=nsg.id,
@@ -121,8 +131,9 @@ def _check_nsg_rules(nsg, result, verbose):
                     observation=f"NSG '{nsg.name}' rule '{rule.name}' allows {port_name} (port {port}) from the internet.",
                     risk=f"Port {port} ({port_name}) is accessible from any IP. Attackers actively scan and brute force these ports. Known CVEs in services listening on this port can lead to remote code execution.",
                     recommendation=f"Restrict port {port} to specific IP ranges. Use Azure Bastion for administrative access.",
-                    remediation_cmd=f"# Update NSG rule via portal or:\naz network nsg rule update --resource-group <RG> --nsg-name {nsg.name} --name {rule.name} --source-address-prefixes <TRUSTED_IP>",
+                    remediation_cmd=f"# Update NSG rule via portal or:\naz network nsg rule update --resource-group {rg_arg} --nsg-name {q(nsg.name)} --name {q(rule.name)} --source-address-prefixes <TRUSTED_IP>",
                     remediation_effort="10 minutes",
                     provider="azure",
-                    compliance=["CIS Azure 6.1" if port == 22 else "CIS Azure 6.2"],
+                    # CIS Azure 6.1 is RDP, 6.2 is SSH; other ports have no CIS control here.
+                    compliance=["CIS Azure 6.2"] if port == 22 else (["CIS Azure 6.1"] if port == 3389 else []),
                 ))

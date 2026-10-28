@@ -1,22 +1,24 @@
 from atarus_cloud.models import AuditResult, CloudFinding
+from atarus_cloud.providers.aws.common import q, region_of
 from atarus_cloud.runner import ModuleResult
 
 
 def run(result: AuditResult, session, verbose: bool) -> ModuleResult:
-    """Audit AWS EC2 security groups and instances"""
+    """Audit AWS EC2 security groups and instances in one region"""
 
     ec2 = session.client("ec2")
+    cov = result.recorder("ec2", "EC2", region_of(session))
     findings_before = len(result.findings)
 
-    _check_security_groups(ec2, result, verbose)
-    _check_public_instances(ec2, result, verbose)
-    _check_ebs_encryption(ec2, result, verbose)
+    _check_security_groups(ec2, result, cov)
+    _check_public_instances(ec2, result, cov)
+    _check_ebs_encryption(ec2, result, cov)
 
     new_findings = len(result.findings) - findings_before
     return ModuleResult(success=True, message=f"{new_findings} findings")
 
 
-def _check_security_groups(ec2, result, verbose):
+def _check_security_groups(ec2, result, cov):
     try:
         sgs = ec2.describe_security_groups()["SecurityGroups"]
 
@@ -54,8 +56,8 @@ def _check_security_groups(ec2, result, verbose):
                                 severity="critical",
                                 observation=f"Security group '{sg_name}' ({sg_id}) allows ALL traffic from the internet (0.0.0.0/0).",
                                 risk="Any service running on instances using this security group is directly accessible from the internet. An attacker can scan all ports and attempt exploitation of any listening service.",
-                                recommendation=f"Restrict inbound rules to specific ports and source IP ranges.",
-                                remediation_cmd=f"aws ec2 revoke-security-group-ingress --group-id {sg_id} --protocol all --cidr 0.0.0.0/0",
+                                recommendation="Restrict inbound rules to specific ports and source IP ranges.",
+                                remediation_cmd=f"aws ec2 revoke-security-group-ingress --group-id {q(sg_id)} --protocol all --cidr 0.0.0.0/0",
                                 remediation_effort="10 minutes",
                                 compliance=["CIS 5.2"],
                             ))
@@ -70,7 +72,7 @@ def _check_security_groups(ec2, result, verbose):
                                 observation=f"Security group '{sg_name}' ({sg_id}) allows {port_name} (port {from_port}) from the internet.",
                                 risk=f"Port {from_port} ({port_name}) is accessible from any IP address. Attackers actively scan for open {port_name} ports and will attempt brute force attacks, credential stuffing, or exploitation of known vulnerabilities.",
                                 recommendation=f"Restrict port {from_port} to specific IP ranges. Use a VPN or bastion host for administrative access.",
-                                remediation_cmd=f"aws ec2 revoke-security-group-ingress --group-id {sg_id} --protocol tcp --port {from_port} --cidr 0.0.0.0/0",
+                                remediation_cmd=f"aws ec2 revoke-security-group-ingress --group-id {q(sg_id)} --protocol tcp --port {int(from_port)} --cidr 0.0.0.0/0",
                                 remediation_effort="10 minutes",
                                 compliance=["CIS 5.2"],
                             ))
@@ -87,19 +89,21 @@ def _check_security_groups(ec2, result, verbose):
                             observation=f"Security group '{sg_name}' ({sg_id}) allows {port_name} (port {from_port}) from all IPv6 addresses.",
                             risk=f"IPv6 ::/0 opens port {from_port} to the entire IPv6 internet. This is often overlooked during security reviews.",
                             recommendation=f"Restrict IPv6 access for port {from_port} to specific ranges.",
-                            remediation_cmd=f"aws ec2 revoke-security-group-ingress --group-id {sg_id} --protocol tcp --port {from_port} --cidr ::/0",
+                            remediation_cmd=f"aws ec2 revoke-security-group-ingress --group-id {q(sg_id)} --protocol tcp --port {int(from_port)} --cidr ::/0",
                             remediation_effort="10 minutes",
                         ))
+        cov.checked("security groups open to the internet", f"{len(sgs)} security groups")
     except Exception as e:
-        if verbose:
-            print(f"  Security group check error: {e}")
+        cov.not_run("security groups open to the internet", e)
 
 
-def _check_public_instances(ec2, result, verbose):
+def _check_public_instances(ec2, result, cov):
     try:
         reservations = ec2.describe_instances()["Reservations"]
+        count = 0
         for res in reservations:
             for instance in res["Instances"]:
+                count += 1
                 instance_id = instance["InstanceId"]
                 state = instance["State"]["Name"]
 
@@ -123,15 +127,15 @@ def _check_public_instances(ec2, result, verbose):
                         observation=f"EC2 instance '{display_name}' ({instance_id}) has a public IP address: {public_ip}.",
                         risk=f"The instance is directly reachable from the internet at {public_ip}. Combined with permissive security groups, this increases the attack surface significantly.",
                         recommendation="Place the instance behind a load balancer or in a private subnet. Use a bastion host or VPN for access.",
-                        remediation_cmd=f"# Review if public IP is necessary:\naws ec2 describe-instances --instance-ids {instance_id} --query 'Reservations[].Instances[].NetworkInterfaces[].Association.PublicIp'",
+                        remediation_cmd=f"# Review if public IP is necessary:\naws ec2 describe-instances --instance-ids {q(instance_id)} --query 'Reservations[].Instances[].NetworkInterfaces[].Association.PublicIp'",
                         remediation_effort="30 minutes",
                     ))
+        cov.checked("instances with public IP addresses", f"{count} instances")
     except Exception as e:
-        if verbose:
-            print(f"  Public instance check error: {e}")
+        cov.not_run("instances with public IP addresses", e)
 
 
-def _check_ebs_encryption(ec2, result, verbose):
+def _check_ebs_encryption(ec2, result, cov):
     try:
         encryption = ec2.get_ebs_encryption_by_default()
         if not encryption.get("EbsEncryptionByDefault", False):
@@ -147,6 +151,6 @@ def _check_ebs_encryption(ec2, result, verbose):
                 remediation_effort="2 minutes",
                 compliance=["CIS 2.2.1"],
             ))
+        cov.checked("EBS encryption by default")
     except Exception as e:
-        if verbose:
-            print(f"  EBS encryption check error: {e}")
+        cov.not_run("EBS encryption by default", e)
