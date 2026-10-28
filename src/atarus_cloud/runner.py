@@ -11,6 +11,10 @@ console = Console()
 SCOPE_GLOBAL = "global"
 SCOPE_REGIONAL = "regional"
 
+# Recorded against a module that returned success without a single coverage
+# row for the region it ran in.
+NO_COVERAGE_REASON = "module reported no coverage"
+
 
 class ModuleResult:
     def __init__(self, success: bool, message: str = ""):
@@ -24,7 +28,9 @@ class CloudRunner:
     `sessions` maps a region (or the Azure "subscription" label) to the session a
     regional module should use there. `global_session` is used by global modules.
     Every module that is skipped, crashes or reports failure is written to
-    result.coverage as a not-run line, never dropped.
+    result.coverage as a not-run line, never dropped. A module that reports
+    success without adding a single coverage row is recorded as not run too
+    ("module reported no coverage"), so coverage cannot be silently empty.
     """
 
     def __init__(self, provider: str, sessions: dict = None, global_session=None,
@@ -79,7 +85,14 @@ class CloudRunner:
             module_result = module["func"](self.result, self._session_for(module, region), self.verbose)
             if module_result is None:
                 module_result = ModuleResult(success=True, message="")
-            if module_result.success:
+            if module_result.success and len(self.result.coverage) == coverage_before:
+                # Coverage is self reported. A module that says it succeeded but
+                # recorded no check cannot count as complete: the score would
+                # otherwise rest on a service nobody looked at.
+                reason = NO_COVERAGE_REASON
+                console.print(f"  [yellow]not run[/] {escape(label)}: {escape(reason)}")
+                self.result.not_run(key, service, region, "all checks", reason)
+            elif module_result.success:
                 console.print(f"  [green]done[/] {escape(label)}: {escape(module_result.message)}")
             else:
                 console.print(f"  [yellow]not run[/] {escape(label)}: {escape(module_result.message)}")

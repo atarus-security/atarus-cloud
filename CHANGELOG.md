@@ -6,6 +6,12 @@ All notable changes to atarus-cloud. Dates are commit dates. Only v1.0.0 was tag
 
 ### Security
 
+- **A module that reports success without recording a single check is recorded as not run.**
+
+  What was wrong: coverage is self reported. Each module calls `cov.checked` or `cov.not_run` for the checks it makes, and the runner trusted a `success=True` return on its own. A module that returned success without recording anything (a code path that skipped its checks, a future module that forgets to record, a region where a module quietly looked at nothing) counted as complete, the coverage table showed no line for it, and the score was computed as if the service had been reviewed.
+
+  What changed: `CloudRunner` compares the coverage table before and after each module call. If a module returns success and the table did not grow, the runner records a not-run line for that module and region with the reason "module reported no coverage", prints "not run" instead of "done", and the score is withheld as for any other not-run line. A module that recorded even one row, checked or not run, is left as it is. Tested with a module that returns success and records nothing, in two regions.
+
 - **Coverage table in every output; no score, "no findings" or "no failed controls" verdict when a check did not run.**
 
   What was wrong: every check in every module caught its own exceptions and, unless `--verbose` was on, threw them away. An IAM user without `iam:ListUsers`, an EC2 call refused by a permission boundary, or an SDK error of any kind produced zero findings for that check, and zero findings scored as 100 out of 100. The HTML report then said "No findings detected" and "Environment meets CIS and NIST control coverage", and the executive summary called the posture strong. A reader could not tell a clean account from an account the tool had not been allowed to look at. On top of that the AWS run looked at exactly one region (us-west-1 unless `--region` was given), so resources in the other sixteen or more enabled regions were never examined and nothing in the output said so.
