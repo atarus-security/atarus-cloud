@@ -1,27 +1,33 @@
-import boto3
 from datetime import datetime, timezone
-from atarus_cloud.models import AuditResult, CloudFinding
+from atarus_cloud.models import AuditResult, CloudFinding, GLOBAL
+from atarus_cloud.providers.aws.common import q
 from atarus_cloud.runner import ModuleResult
 
 
 def run(result: AuditResult, session, verbose: bool) -> ModuleResult:
-    """Audit AWS IAM configuration"""
+    """Audit AWS IAM configuration (global service, runs once per account)"""
 
     iam = session.client("iam")
+    cov = result.recorder("iam", "IAM", GLOBAL)
     findings_before = len(result.findings)
 
-    _check_root_account(iam, result, verbose)
-    _check_mfa(iam, result, verbose)
-    _check_access_keys(iam, result, verbose)
-    _check_password_policy(iam, result, verbose)
-    _check_admin_users(iam, result, verbose)
-    _check_unused_users(iam, result, verbose)
+    try:
+        users = iam.list_users()["Users"]
+    except Exception as e:
+        return ModuleResult(success=False, message=f"Cannot list IAM users: {e}")
+
+    _check_root_account(iam, result, cov)
+    _check_mfa(iam, users, result, cov)
+    _check_access_keys(iam, users, result, cov)
+    _check_password_policy(iam, result, cov)
+    _check_admin_users(iam, users, result, cov)
+    _check_unused_users(users, result, cov)
 
     new_findings = len(result.findings) - findings_before
-    return ModuleResult(success=True, message=f"{new_findings} findings")
+    return ModuleResult(success=True, message=f"Checked {len(users)} users, {new_findings} findings")
 
 
-def _check_root_account(iam, result, verbose):
+def _check_root_account(iam, result, cov):
     try:
         summary = iam.get_account_summary()["SummaryMap"]
         if summary.get("AccountMFAEnabled", 0) == 0:
@@ -37,14 +43,13 @@ def _check_root_account(iam, result, verbose):
                 remediation_effort="5 minutes",
                 compliance=["CIS 1.5"],
             ))
+        cov.checked("root account MFA")
     except Exception as e:
-        if verbose:
-            print(f"  Root account check error: {e}")
+        cov.not_run("root account MFA", e)
 
 
-def _check_mfa(iam, result, verbose):
+def _check_mfa(iam, users, result, cov):
     try:
-        users = iam.list_users()["Users"]
         for user in users:
             username = user["UserName"]
             mfa_devices = iam.list_mfa_devices(UserName=username)["MFADevices"]
@@ -69,14 +74,13 @@ def _check_mfa(iam, result, verbose):
                         remediation_effort="5 minutes per user",
                         compliance=["CIS 1.10"],
                     ))
+        cov.checked("console users without MFA", f"{len(users)} users")
     except Exception as e:
-        if verbose:
-            print(f"  MFA check error: {e}")
+        cov.not_run("console users without MFA", e)
 
 
-def _check_access_keys(iam, result, verbose):
+def _check_access_keys(iam, users, result, cov):
     try:
-        users = iam.list_users()["Users"]
         for user in users:
             username = user["UserName"]
             keys = iam.list_access_keys(UserName=username)["AccessKeyMetadata"]
@@ -95,7 +99,7 @@ def _check_access_keys(iam, result, verbose):
                         observation=f"Access key '{key_id}' for user '{username}' is {age_days} days old.",
                         risk=f"Long-lived access keys increase the window of exposure if compromised. This key has been active for {age_days} days without rotation, giving a potential attacker extended access if the key was leaked in code, logs, or a breach.",
                         recommendation=f"Rotate access key '{key_id}' for user '{username}'. Establish a 90-day key rotation policy.",
-                        remediation_cmd=f"aws iam create-access-key --user-name {username}\naws iam delete-access-key --user-name {username} --access-key-id {key_id}",
+                        remediation_cmd=f"aws iam create-access-key --user-name {q(username)}\naws iam delete-access-key --user-name {q(username)} --access-key-id {q(key_id)}",
                         remediation_effort="10 minutes",
                         compliance=["CIS 1.14"],
                     ))
@@ -109,15 +113,15 @@ def _check_access_keys(iam, result, verbose):
                         observation=f"Inactive access key '{key_id}' exists for user '{username}'.",
                         risk="Inactive keys are unnecessary attack surface. If reactivated by an attacker with IAM access, they could be used for unauthorized API calls.",
                         recommendation=f"Delete inactive access key '{key_id}' for user '{username}'.",
-                        remediation_cmd=f"aws iam delete-access-key --user-name {username} --access-key-id {key_id}",
+                        remediation_cmd=f"aws iam delete-access-key --user-name {q(username)} --access-key-id {q(key_id)}",
                         remediation_effort="2 minutes",
                     ))
+        cov.checked("access key age and inactive keys", f"{len(users)} users")
     except Exception as e:
-        if verbose:
-            print(f"  Access key check error: {e}")
+        cov.not_run("access key age and inactive keys", e)
 
 
-def _check_password_policy(iam, result, verbose):
+def _check_password_policy(iam, result, cov):
     try:
         policy = iam.get_account_password_policy()["PasswordPolicy"]
 
@@ -151,6 +155,7 @@ def _check_password_policy(iam, result, verbose):
                 remediation_effort="2 minutes",
                 compliance=["CIS 1.8"],
             ))
+        cov.checked("account password policy")
 
     except iam.exceptions.NoSuchEntityException:
         result.add_finding(CloudFinding(
@@ -165,14 +170,13 @@ def _check_password_policy(iam, result, verbose):
             remediation_effort="5 minutes",
             compliance=["CIS 1.8"],
         ))
+        cov.checked("account password policy", "none configured")
     except Exception as e:
-        if verbose:
-            print(f"  Password policy check error: {e}")
+        cov.not_run("account password policy", e)
 
 
-def _check_admin_users(iam, result, verbose):
+def _check_admin_users(iam, users, result, cov):
     try:
-        users = iam.list_users()["Users"]
         for user in users:
             username = user["UserName"]
             policies = iam.list_attached_user_policies(UserName=username)["AttachedPolicies"]
@@ -187,18 +191,17 @@ def _check_admin_users(iam, result, verbose):
                         observation=f"IAM user '{username}' has the AdministratorAccess policy directly attached.",
                         risk=f"Direct admin access means '{username}' can create, modify, or delete any resource in the account. If compromised, the blast radius is the entire AWS environment.",
                         recommendation=f"Use role-based access instead. Create an admin role and allow '{username}' to assume it with MFA required.",
-                        remediation_cmd=f"# Review and replace direct admin policy:\naws iam detach-user-policy --user-name {username} --policy-arn arn:aws:iam::aws:policy/AdministratorAccess",
+                        remediation_cmd=f"# Review and replace direct admin policy:\naws iam detach-user-policy --user-name {q(username)} --policy-arn arn:aws:iam::aws:policy/AdministratorAccess",
                         remediation_effort="30 minutes",
                         compliance=["CIS 1.16"],
                     ))
+        cov.checked("directly attached AdministratorAccess", f"{len(users)} users")
     except Exception as e:
-        if verbose:
-            print(f"  Admin users check error: {e}")
+        cov.not_run("directly attached AdministratorAccess", e)
 
 
-def _check_unused_users(iam, result, verbose):
+def _check_unused_users(users, result, cov):
     try:
-        users = iam.list_users()["Users"]
         for user in users:
             username = user["UserName"]
 
@@ -214,10 +217,10 @@ def _check_unused_users(iam, result, verbose):
                         observation=f"IAM user '{username}' has not logged in for {days_since} days.",
                         risk="Dormant accounts are prime targets for attackers. Unused credentials that remain active can be compromised without the legitimate user noticing.",
                         recommendation=f"Disable or delete the unused account '{username}' if no longer needed.",
-                        remediation_cmd=f"aws iam delete-login-profile --user-name {username}",
+                        remediation_cmd=f"aws iam delete-login-profile --user-name {q(username)}",
                         remediation_effort="5 minutes",
                         compliance=["CIS 1.12"],
                     ))
+        cov.checked("console users unused for 90 days", f"{len(users)} users")
     except Exception as e:
-        if verbose:
-            print(f"  Unused users check error: {e}")
+        cov.not_run("console users unused for 90 days", e)

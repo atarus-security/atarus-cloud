@@ -9,6 +9,8 @@ permissions:
 
 jobs:
   unittest:
+    # Base install only: no Azure SDK, no WeasyPrint. The suite must pass here,
+    # which proves the package imports and the tests need neither extra.
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -21,11 +23,16 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install
         run: python -m pip install .
+      - name: Smoke test the entry point without credentials
+        run: |
+          atarus-cloud --version
+          atarus-cloud --list-modules
+          if atarus-cloud -p azure --format json; then exit 1; fi
       - name: Run tests
         run: python -m unittest discover -s tests -v
 
-  pinned:
-    # Reproduces the dependency set recorded in constraints.txt.
+  extras:
+    # Full install with the Azure and PDF extras, pinned to constraints.txt.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,6 +40,6 @@ jobs:
         with:
           python-version: "3.13"
       - name: Install with constraints
-        run: python -m pip install -c constraints.txt .
+        run: python -m pip install -c constraints.txt ".[all]"
       - name: Run tests
         run: python -m unittest discover -s tests -v

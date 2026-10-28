@@ -1,5 +1,6 @@
-# Dependency versions the test suite last passed with (Python 3.13, Debian 13, 2026-10-21).
-# Use as constraints, not requirements: pip install -c constraints.txt -e .
+# Dependency versions the test suite last passed with (Python 3.13, Debian 13, 2026-10-21),
+# covering the base install and the [azure] and [pdf] extras.
+# Use as constraints, not requirements: pip install -c constraints.txt -e ".[all]"
 azure-common==1.1.28
 azure-core==1.41.0
 azure-identity==1.26.0

@@ -1,471 +1,330 @@
 # atarus-cloud
 
-Multi-cloud security misconfiguration scanner by [Atarus Offensive Security](https://atarussecurity.com).
+Read-only cloud configuration review for AWS and Azure by [Atarus Offensive Security](https://atarussecurity.com).
 
-Single command. Sixteen modules. Every cloud security check a pentester runs at the start of an engagement, chained into one branded report with attack path correlation, executive summary, and an executable remediation script.
+Sixteen modules of describe, get and list calls against the account you point it at, written up the way a pentest report would put them: observation, risk, recommendation and the CLI command that fixes it. Attack path correlation, an executive summary, CIS and NIST mapping, and a coverage table that says exactly which checks ran in which regions and which did not.
 
-## Quick start
+## Install
+
+Python 3.10 or newer.
 
 ```bash
 git clone https://github.com/atarus-security/atarus-cloud.git
 cd atarus-cloud
 python3 -m venv venv
 source venv/bin/activate
-pip install -e .   # Python 3.10+; installs the AWS and Azure SDKs
 
-# PDF export needs the Pango system libraries (HTML, JSON and the
-# remediation script work without them). On Debian or Kali:
-sudo apt install libpango-1.0-0 libpangoft2-1.0-0
+pip install -e .              # AWS reviews, HTML and JSON reports
+pip install -e ".[azure]"     # add the Azure provider (the Azure SDK)
+pip install -e ".[pdf]"       # add PDF export (WeasyPrint)
+pip install -e ".[all]"       # both extras
+```
 
-# AWS
-aws configure
+PDF export also needs the Pango system libraries. On Debian or Kali: `sudo apt install libpango-1.0-0 libpangoft2-1.0-0`. HTML and JSON reports never need them.
+
+`atarus-cloud --version` and `atarus-cloud --list-modules` work with no credentials and no extras. `-p azure` without the Azure extra, and `--format pdf` without the PDF extra, stop with a one-line message naming the install command.
+
+## Quick start
+
+```bash
+# AWS: every module, every enabled region, HTML and JSON reports
+aws configure                      # or any other way of setting the AWS credential chain
 atarus-cloud -p aws --format all
 
-# Azure
+# Azure: the default subscription of your az login
 az login
 atarus-cloud -p azure --format all
 ```
 
-That single command produces:
+A run writes to `./output` (change it with `-o`):
 
-- `atarus-cloud-<account-id>.html` - tabbed report with overview, exec summary, attack paths, findings, compliance, remediation
-- `atarus-cloud-<account-id>.pdf` - branded PDF export
-- `atarus-cloud-<account-id>.json` - machine-readable output
-- `remediation-<account-id>.sh` - executable shell script with every actionable CLI command, ordered by severity
+- `atarus-cloud-<account-id>.html`: tabbed report with overview, executive summary, attack paths, findings, compliance, coverage and remediation
+- `atarus-cloud-<account-id>.json`: the same data, machine readable
+- `atarus-cloud-<account-id>.pdf`: with `--format pdf` or `all`, when the PDF extra is installed
+- `remediation-<account-id>.sh`: only with `--remediation-script`; see below
 
-## Why this tool exists
+With no credentials the tool stops with a one-line message, for example `No AWS credentials found. atarus-cloud reads the standard AWS credential chain ...`. There is no traceback.
 
-Cloud scanners have been around for years. ScoutSuite dumps 200 findings with no context. Prowler outputs CIS control numbers nobody remembers. Commercial tools charge thousands and produce reports nobody reads.
+## What the output says and does not say
 
-atarus-cloud was built by pentesters who were tired of delivering audit output pretending to be security work.
+### Coverage table
 
-**Every finding reads like a pen test report.** Observation of what was found. Risk of what an attacker could do. Recommendation with the exact CLI command to fix it.
+Every check the tool intends to make is recorded, per service and per region, as **checked** or **not run** with the reason. The console prints the table at the end of every run, the HTML report has a Coverage tab, and the JSON report has a `coverage` array with one entry per check.
 
-**Attack paths chain findings into real scenarios.** Instead of listing "no MFA" and "admin access" separately, the report tells you how an attacker combines them into full account takeover.
+```
+                                  Coverage
+┏━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Service               ┃ Region     ┃ Status  ┃ Detail                    ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ IAM                   │ global     │ checked │ 6 checks                  │
+│ S3                    │ global     │ checked │ 4 checks                  │
+│ EC2                   │ us-west-1  │ checked │ 3 checks                  │
+│ EC2                   │ eu-west-1  │ partial │ 1 of 3 checks did not run │
+│ ...                   │            │         │                           │
+│ all regional services │ ap-south-1 │ not run │ not in the --region list  │
+└───────────────────────┴────────────┴─────────┴───────────────────────────┘
+Checks not run (2):
+  - all regional services / ap-south-1: not in the --region list
+  - EC2 / eu-west-1 / security groups open to the internet: ClientError: An error occurred
+    (UnauthorizedOperation) when calling the DescribeSecurityGroups operation: ...
+```
 
-**The executive summary auto-generates.** Plain language for the CISO or city manager. Security posture, key risks, recommended actions.
+Reasons you will see: an API error (usually a missing permission), `skipped with --skip`, `not listed in --only`, `not in the --region list`, `could not list enabled regions`, `module crashed`, and `Azure SDK package not installed`. A check that fails for one resource (one bucket, one key, one vault) gets its own line, and the check's summary line says how many resources it did cover.
 
-**Compliance mapping is built in.** CIS AWS, CIS Azure, and NIST 800-53 mapped to every finding.
+### Score only on full coverage
 
-**The remediation script actually runs.** Review it, approve it, execute it. Fix 40 findings with one script instead of clicking through the console.
+If every check ran in every selected region, the report carries a score out of 100 and the usual wording. If even one check did not run, there is no score: the console, the report and the JSON say **partial coverage, no score (n of m checks did not run)**, the executive summary says the assessment did not complete, the findings tab says that no findings among the checks that ran is not a clean result, and the compliance tab says that controls with no finding are not passes. A service with zero findings is a clean service only when its checks are all marked checked.
+
+### Regions
+
+AWS by default: the tool lists the regions enabled for the account (`ec2:DescribeRegions`) and runs the regional modules (EC2, CloudTrail, RDS, VPC, Lambda, KMS, Secrets Manager) in each of them. IAM and S3 are global and run once. `--region` limits the run; it may be repeated or comma separated (`--region us-east-1,eu-west-1`). Enabled regions you leave out are listed as not checked and the score is withheld. If the region listing itself fails, the run uses the session's own region and records every other region as not checked.
+
+CloudTrail is judged per region: a region with no trail covering it is a finding. Per-trail settings (multi-region, log file validation, logging status) are checked in the trail's home region only, so one multi-region trail is reported once.
+
+Azure modules list resources across the whole subscription in one call each; the region column reads `subscription`.
+
+### Remediation script
+
+Written only when you pass `--remediation-script`. Every command in it is commented out, every resource value is shell-quoted, the file is created with mode 0644 and is never executable, and the header says REVIEW BEFORE RUNNING. Read each command, check the resource and the change against your own environment, replace any placeholder (`<RG>`, `YOUR-LOG-BUCKET`, `<NEW_RUNTIME>`), and remove the leading `# ` from the lines you approve. The same quoted commands appear in the report's Remediation tab. The tool itself never changes a cloud resource.
 
 ## Modules
 
-| Provider | Key | Service | What it checks |
-|---|---|---|---|
-| AWS | iam | IAM | Users, MFA, access keys, password policy, admin access |
-| AWS | s3 | S3 | Bucket policies, encryption, versioning, logging, public access |
-| AWS | ec2 | EC2 | Security groups, public IPs, EBS encryption |
-| AWS | cloudtrail | CloudTrail | Logging gaps, multi-region, log validation |
-| AWS | rds | RDS | Public databases, encryption at rest, backup retention |
-| AWS | vpc | VPC | Default VPCs, flow logs |
-| AWS | lambda | Lambda | Env var secrets, deprecated runtimes, resource policies |
-| AWS | kms | KMS | Key rotation, resource policies |
-| AWS | secrets | Secrets Manager | Rotation, age, resource policies |
-| Azure | identity | Identity | Owner roles, direct assignments, custom roles |
-| Azure | storage | Storage | HTTPS, TLS version, public access, blob containers |
-| Azure | network | Network | NSG rules, dangerous open ports, public IPs |
-| Azure | compute | Compute | Disk encryption, managed disks, boot diagnostics |
-| Azure | keyvault | Key Vault | Soft delete, purge protection, network access, RBAC |
-| Azure | sql | SQL | Public access, firewall rules, TLS, auditing, Entra admin |
-| Azure | cosmosdb | Cosmos DB | Public network access, firewall rules, local auth, failover |
+| Provider | Key | Service | Scope | What it checks |
+|---|---|---|---|---|
+| AWS | iam | IAM | global | Root MFA, console users without MFA, access key age and inactive keys, password policy, directly attached AdministratorAccess, console users unused for 90 days |
+| AWS | s3 | S3 | global | Public access block, default encryption, versioning, access logging |
+| AWS | ec2 | EC2 | per region | Security groups open to the internet, instances with public IPs, EBS encryption by default |
+| AWS | cloudtrail | CloudTrail | per region | A trail covering the region; for trails homed there: multi-region, log file validation, logging status |
+| AWS | rds | RDS | per region | Public accessibility, storage encryption, auto minor version upgrade, backup retention |
+| AWS | vpc | VPC | per region | Default VPC in use, VPC flow logs |
+| AWS | lambda | Lambda | per region | Environment variables that look like secrets, deprecated runtimes, resource policy open to any principal |
+| AWS | kms | KMS | per region | Customer-managed keys: automatic rotation, key policy open to any principal |
+| AWS | secrets | Secrets Manager | per region | Automatic rotation, age since last rotation or change, resource policy open to any principal, scheduled deletion |
+| Azure | identity | Identity | subscription | Owner assignments at subscription scope, direct user Owner assignments, custom roles with wildcard actions |
+| Azure | storage | Storage | subscription | Secure transfer, minimum TLS, network default action, account-level blob public access, blob encryption, public containers |
+| Azure | network | Network | subscription | NSG inbound rules open to the internet, allocated public IPs |
+| Azure | compute | Compute | subscription | OS disk encryption settings, managed disks, boot diagnostics |
+| Azure | keyvault | Key Vault | subscription | Soft delete, purge protection, network default action, RBAC permission model |
+| Azure | sql | SQL | subscription | Public network access, firewall rules, minimum TLS, Entra ID administrator, auditing |
+| Azure | cosmosdb | Cosmos DB | subscription | Public network access without restrictions, 0.0.0.0 firewall rule, local key-based authentication, automatic failover |
 
-Every module is independently toggleable via `--skip` or `--only`.
+Every module can be left out with `--skip` or selected with `--only`; the modules that do not run are recorded as not run.
 
 ## AWS module reference
 
-### iam
+### iam (global)
 
-Audits AWS IAM for credential hygiene, privilege escalation paths, and access pattern anomalies.
+**Checks**: root account MFA (critical if disabled); console users without an MFA device (high); access keys older than 90 days (medium) and inactive access keys (low); password policy, flagged when missing (high), shorter than 14 characters or without all four character classes (medium); users with `AdministratorAccess` attached directly (medium); console users whose password was last used more than 90 days ago (low).
 
-**Checks**:
-- Root account MFA status (critical if disabled)
-- Root account access keys (critical if any exist)
-- Console users without MFA enabled
-- Access keys older than 90 days
-- IAM users with administrator policies attached directly (not via group)
-- Password policy strength (length, complexity, rotation)
-- Inline policies that grant `*:*`
+**API calls**: `iam:ListUsers`, `iam:GetAccountSummary`, `iam:ListMFADevices`, `iam:GetLoginProfile`, `iam:ListAccessKeys`, `iam:GetAccountPasswordPolicy`, `iam:ListAttachedUserPolicies`. If `ListUsers` fails the whole module is recorded as not run.
 
-**Required IAM permissions**: `iam:GetAccountSummary`, `iam:ListUsers`, `iam:ListAccessKeys`, `iam:GetAccountPasswordPolicy`, `iam:ListAttachedUserPolicies`, `iam:GetCredentialReport`, `iam:GenerateCredentialReport`
+**Compliance**: CIS AWS 1.5, 1.8, 1.10, 1.12, 1.14, 1.16.
 
-**Compliance mappings**: CIS AWS 1.5, 1.8, 1.10, 1.12, 1.14, 1.16
+### s3 (global)
 
----
+**Checks**: public access block missing or not fully enabled (high); no default encryption (medium); versioning off (low); server access logging off (low).
 
-### s3
+**API calls**: `s3:ListAllMyBuckets`, then per bucket `s3:GetBucketPublicAccessBlock`, `s3:GetEncryptionConfiguration`, `s3:GetBucketVersioning`, `s3:GetBucketLogging`. Any error other than the "no configuration" codes the checks expect is a not-run line for that bucket.
 
-Audits S3 buckets for public exposure, encryption gaps, and missing protections.
+**Compliance**: CIS AWS 2.1.1, 2.1.3, 2.1.4, 2.1.5.
 
-**Checks**:
-- Buckets with public ACLs (high)
-- Buckets with public bucket policies (high)
-- Block Public Access disabled at bucket or account level
-- Server-side encryption not enabled
-- Versioning disabled (limits ransomware recovery)
-- Server access logging disabled
-- MFA delete not enabled
+**Notes**: bucket ACLs and bucket policies are not read; a bucket can be public through either and this module does not say so. The bucket calls use the base session's region; see Known issues.
 
-**Required IAM permissions**: `s3:ListAllMyBuckets`, `s3:GetBucketAcl`, `s3:GetBucketPolicy`, `s3:GetBucketEncryption`, `s3:GetBucketLogging`, `s3:GetBucketVersioning`, `s3:GetPublicAccessBlock`, `s3:GetAccountPublicAccessBlock`
+### ec2 (per region)
 
-**Compliance mappings**: CIS AWS 2.1.1, 2.1.3, 2.1.4, 2.1.5
+**Checks**: security group rules from `0.0.0.0/0` to all ports (critical) or to 22, 3389 (critical), 3306, 5432, 1433, 27017, 6379, 11211, 23, 21 or 445 (high); the same ports from `::/0` (high); running instances with a public IPv4 address (medium); EBS encryption by default off in the region (medium).
 
-**Notes**: Public bucket detection considers both ACL and policy. A bucket can be public via either path, and both are checked independently.
+**API calls**: `ec2:DescribeSecurityGroups`, `ec2:DescribeInstances`, `ec2:GetEbsEncryptionByDefault`.
 
----
+**Compliance**: CIS AWS 5.2, 2.2.1.
 
-### ec2
+**Notes**: a rule is matched on its `FromPort`; a port range that merely spans an admin port is not flagged. Individual EBS volumes are not examined.
 
-Audits EC2 instances and security groups for network exposure and disk encryption.
+### cloudtrail (per region)
 
-**Checks**:
-- Security groups allowing ingress from `0.0.0.0/0` to admin ports (22, 3389, 3306, 5432, 1433)
-- Default VPC security groups not properly restricted
-- EC2 instances with public IPv4 addresses
-- EBS volumes without encryption at rest
-- EBS encryption-by-default not set at the account level
+**Checks**: no trail covers the region, own or multi-region shadow (critical); for trails homed in the region: not multi-region (high), log file validation off (medium), logging stopped (critical).
 
-**Required IAM permissions**: `ec2:DescribeInstances`, `ec2:DescribeSecurityGroups`, `ec2:DescribeVolumes`, `ec2:GetEbsEncryptionByDefault`
+**API calls**: `cloudtrail:DescribeTrails`, `cloudtrail:GetTrailStatus`.
 
-**Compliance mappings**: CIS AWS 5.2, 5.3, 2.2.1
+**Compliance**: CIS AWS 3.1, 3.2.
 
-**Notes**: Admin port detection lists the most common SSH, RDP, and database ports. Custom admin ports won't be flagged unless added to the module's port list.
+### rds (per region)
 
----
+**Checks**: publicly accessible (critical); storage not encrypted (high); auto minor version upgrade off (medium); backup retention under 7 days (low).
 
-### cloudtrail
+**API calls**: `rds:DescribeDBInstances` (paginated).
 
-Audits CloudTrail configuration for logging gaps that would blind incident responders.
+**Compliance**: CIS AWS 2.3.1.
 
-**Checks**:
-- No CloudTrail trails exist (critical)
-- All trails are single-region (incidents in unmonitored regions go unseen)
-- Log file validation not enabled
-- Trail not delivering to a CloudWatch log group
-- S3 bucket holding trail logs is publicly accessible
+### vpc (per region)
 
-**Required IAM permissions**: `cloudtrail:DescribeTrails`, `cloudtrail:GetTrailStatus`, `cloudtrail:GetEventSelectors`, `s3:GetBucketAcl`, `s3:GetBucketPolicy`
+**Checks**: default VPC with network interfaces attached (medium) or empty (low); VPCs without flow logs (medium).
 
-**Compliance mappings**: CIS AWS 3.1, 3.2
+**API calls**: `ec2:DescribeVpcs`, `ec2:DescribeNetworkInterfaces`, `ec2:DescribeFlowLogs`.
 
-**Notes**: A multi-region trail in any region satisfies the multi-region check. The module reports the worst case across all trails.
+**Compliance**: CIS AWS 3.9, 5.3.
 
----
+### lambda (per region)
 
-### rds
+**Checks**: environment variable names that look like secrets (high) and values matching secret patterns such as `AKIA...` or `password=` (critical); deprecated runtimes (medium); resource policy allowing any principal (critical).
 
-Audits RDS instances for public exposure, missing encryption, and weak backup posture.
+**API calls**: `lambda:ListFunctions` (paginated; the function configuration including environment variables comes back in the listing), `lambda:GetPolicy`.
 
-**Checks**:
-- RDS instances with PubliclyAccessible set to true (high)
-- Storage encryption not enabled
-- Backup retention period of 0 (no backups)
-- RDS instances using default username (admin, root, postgres)
+**Notes**: secret detection is pattern matching and will flag test values; the report never stores the variable's value, only its name.
 
-**Required IAM permissions**: `rds:DescribeDBInstances`, `rds:DescribeDBSnapshots`
+### kms (per region)
 
-**Compliance mappings**: CIS AWS 2.3.1
+**Checks**: customer-managed, enabled keys without automatic rotation (medium); default key policy with an `Allow` for any principal and no condition (critical).
 
-**Notes**: Public RDS is high severity even when behind security group restrictions, because misconfiguration of those groups would expose the database directly.
+**API calls**: `kms:ListKeys` (paginated), `kms:DescribeKey`, `kms:GetKeyRotationStatus`, `kms:GetKeyPolicy`.
 
----
+**Compliance**: CIS AWS 2.8.
 
-### vpc
+### secrets (per region)
 
-Audits VPC configuration for missing visibility and unsafe defaults.
+**Checks**: automatic rotation off (medium); last rotated or changed more than 180 days ago (medium) or more than 365 (high); resource policy allowing any principal without a condition (critical); scheduled for deletion (low).
 
-**Checks**:
-- VPCs without flow logs enabled
-- Default VPC still in use (cannot have flow logs added cleanly)
-- Default security groups not restricted
-
-**Required IAM permissions**: `ec2:DescribeVpcs`, `ec2:DescribeFlowLogs`, `ec2:DescribeSecurityGroups`
-
-**Compliance mappings**: CIS AWS 3.9, 5.3
-
----
-
-### lambda
-
-Audits Lambda functions for hardcoded secrets, deprecated runtimes, and overpermissive resource policies.
-
-**Checks**:
-- Environment variables containing strings that look like secrets (AKIA, password=, token=, etc.)
-- Functions running on deprecated Python or Node runtimes (Python 3.6, 3.7, Node 12, etc.)
-- Resource-based policies allowing invocation from any AWS account
-- Functions without VPC configuration handling sensitive data
-
-**Required IAM permissions**: `lambda:ListFunctions`, `lambda:GetFunctionConfiguration`, `lambda:GetPolicy`
-
-**Notes**: Secret detection uses pattern matching on environment variable values. False positives possible on test/dummy data. Review flagged functions manually.
-
----
-
-### kms
-
-Audits KMS keys for rotation policy and resource policy issues.
-
-**Checks**:
-- Customer-managed keys without automatic key rotation enabled
-- KMS resource policies allowing access from any AWS account
-- Disabled keys still being referenced by active resources
-
-**Required IAM permissions**: `kms:ListKeys`, `kms:DescribeKey`, `kms:GetKeyRotationStatus`, `kms:GetKeyPolicy`
-
-**Compliance mappings**: CIS AWS 2.8
-
----
-
-### secrets
-
-Audits AWS Secrets Manager for rotation gaps and access policy issues.
-
-**Checks**:
-- Secrets without automatic rotation enabled
-- Secrets older than 90 days that have not been rotated
-- Resource policies allowing cross-account access without MFA conditions
-
-**Required IAM permissions**: `secretsmanager:ListSecrets`, `secretsmanager:DescribeSecret`, `secretsmanager:GetResourcePolicy`
+**API calls**: `secretsmanager:ListSecrets` (paginated), `secretsmanager:GetResourcePolicy`. Secret values are never read.
 
 ## Azure module reference
 
+Every Azure module needs the Reader role on the subscription and lists resources subscription-wide.
+
 ### identity
 
-Audits Azure subscription for direct role assignments and custom role exposure.
+**Checks**: more than three Owner assignments at subscription scope (high); user principals with a direct Owner assignment (medium); custom roles granting `*` actions (high). If the role definitions cannot be listed, all three checks are recorded as not run rather than silently passing.
 
-**Checks**:
-- Owner role assigned directly to user principals (should be via PIM-eligible groups)
-- Custom roles with overly broad permissions
-- Service principals with subscription Owner role
-
-**Required Azure RBAC role**: Reader on the subscription
-
-**Compliance mappings**: CIS Azure 1.22, 1.23
-
-**Notes**: Subscription Owner via direct user assignment bypasses PIM controls. The module flags this even when the user is the legitimate subscription admin, because best practice is to use a PIM-eligible group.
-
----
+**Compliance**: CIS Azure 1.22, 1.23.
 
 ### storage
 
-Audits Azure Storage Accounts for HTTPS enforcement, TLS version, and public access settings.
+**Checks**: secure transfer not required (high); minimum TLS below 1.2 (medium); public network access with default action Allow (high); blob public access allowed at account level (medium); blob encryption disabled (high); containers with anonymous public access (critical).
 
-**Checks**:
-- Secure transfer (HTTPS only) not required
-- Minimum TLS version below 1.2
-- Blob anonymous access allowed at account level
-- Storage account encryption not enabled
-- Network rules allowing access from any network
-
-**Required Azure RBAC role**: Reader on the subscription
-
-**Compliance mappings**: CIS Azure 3.1, 3.2, 3.6, 3.7, 3.15
-
----
+**Compliance**: CIS Azure 3.1, 3.2, 3.6, 3.7, 3.15.
 
 ### network
 
-Audits Network Security Groups for dangerous inbound rules.
+**Checks**: NSG inbound Allow rules from `*`, `Internet` or `0.0.0.0/0` to all ports (critical) or to the admin and database ports listed under ec2 (critical for 22 and 3389, high otherwise); every allocated public IP address (low, informational).
 
-**Checks**:
-- NSG rules allowing inbound from `*` or `Internet` to admin ports (22, 3389, 3306, 5432, 1433)
-- NSG rules allowing inbound from `*` to all ports
-- Public IP addresses on resources without justification
-
-**Required Azure RBAC role**: Reader on the subscription
-
-**Compliance mappings**: CIS Azure 6.1, 6.2
-
----
+**Compliance**: CIS Azure 6.1 (RDP), 6.2 (SSH).
 
 ### compute
 
-Audits virtual machines and disks for encryption and management posture.
+**Checks**: OS disk without Azure Disk Encryption settings (medium); unmanaged disks (medium); boot diagnostics off (low).
 
-**Checks**:
-- VMs with unmanaged (classic) disks
-- Disks without Azure Disk Encryption
-- VMs without boot diagnostics enabled
-
-**Required Azure RBAC role**: Reader on the subscription
-
-**Compliance mappings**: CIS Azure 7.2, 7.3
-
----
+**Compliance**: CIS Azure 7.2, 7.3.
 
 ### keyvault
 
-Audits Azure Key Vault for protection settings against accidental and malicious deletion.
+**Checks**: soft delete off (high); purge protection off (medium); public network access with default action Allow (high); access-policy permission model instead of RBAC (low).
 
-**Checks**:
-- Soft delete not enabled
-- Purge protection not enabled
-- Public network access enabled with no firewall restrictions
-- Access policy permission model used instead of Azure RBAC
-
-**Required Azure RBAC role**: Reader on the subscription
-
-**Compliance mappings**: CIS Azure 8.1, 8.2, 8.5
-
-**Notes**: Soft delete and purge protection are both irreversible once enabled, by design. The module flags vaults that should have these but don't.
-
----
+**Compliance**: CIS Azure 8.1, 8.2, 8.5.
 
 ### sql
 
-Audits Azure SQL servers for public exposure, weak TLS, and missing controls.
+**Checks**: public network access enabled (high); firewall rule `0.0.0.0` to `255.255.255.255` (critical); `AllowAllWindowsAzureIps` or a `0.0.0.0` to `0.0.0.0` rule (medium); minimal TLS below 1.2 (medium); no Entra ID administrator (medium); auditing not enabled (high).
 
-**Checks**:
-- Public network access enabled
-- Firewall rules allowing `0.0.0.0/0` (entire internet) - critical
-- "Allow Azure services" enabled (any Azure tenant can connect)
-- Minimum TLS version below 1.2
-- Entra ID administrator not configured (forces SQL auth only)
-- Auditing not enabled
-
-**Required Azure RBAC role**: Reader on the subscription
-
-**Compliance mappings**: CIS Azure 4.1.1, 4.1.2, 4.1.3, 4.1.4, 4.1.5, 4.1.6
-
-**Notes**: A SQL server with `0.0.0.0/0` firewall rule is the highest-impact finding this tool produces. Direct internet exposure of a database is treated as critical regardless of authentication.
-
----
+**Compliance**: CIS Azure 4.1.1 to 4.1.6.
 
 ### cosmosdb
 
-Audits Cosmos DB accounts for network exposure and authentication settings.
+**Checks**: public network access with no IP or VNet rules (high); `0.0.0.0` IP rule (medium); local key-based authentication enabled (medium); automatic failover off (low).
 
-**Checks**:
-- Public network access enabled with no IP or VNet restrictions
-- IP firewall rule of `0.0.0.0` (allows all Azure datacenters)
-- Local (key-based) authentication not disabled
-- Automatic failover not enabled
-
-**Required Azure RBAC role**: Reader on the subscription
-
-**Compliance mappings**: CIS Azure 4.5.1
+**Compliance**: CIS Azure 4.5.1.
 
 ## Usage
 
-### Common patterns
-
 ```bash
-# Default: AWS audit, HTML report only
-atarus-cloud -p aws
-
-# All output formats (HTML, PDF, JSON, remediation.sh)
-atarus-cloud -p aws --format all
-
-# Specific AWS profile
-atarus-cloud -p aws --profile production --format all
-
-# Specific Azure subscription
-atarus-cloud -p azure --subscription <SUBSCRIPTION_ID> --format all
-
-# Quick scan: skip slow modules
-atarus-cloud -p aws --skip rds,vpc
-
-# Targeted: storage and identity only
-atarus-cloud -p azure --only storage,identity
-
-# List all available modules
+atarus-cloud -p aws                                  # every enabled region, HTML report
+atarus-cloud -p aws --format all                     # HTML, JSON and (with the extra) PDF
+atarus-cloud -p aws --profile production             # a named AWS profile
+atarus-cloud -p aws --region us-east-1,eu-west-1     # two regions; the rest listed as not checked
+atarus-cloud -p aws --remediation-script             # also write the commented-out script
+atarus-cloud -p azure --subscription <SUBSCRIPTION_ID>
+atarus-cloud -p aws --skip rds,vpc                   # recorded as not run
+atarus-cloud -p azure --only storage,identity        # the rest recorded as not run
 atarus-cloud --list-modules
-
-# Show version
 atarus-cloud --version
 ```
 
 ### Authentication
 
-**AWS**: Uses standard AWS SDK credential chain. Configure via `aws configure`, environment variables, or IAM instance role. The tool reads credentials from your local environment, never from arguments.
+**AWS**: the standard credential chain (`aws configure` profiles, environment variables, an instance or container role). Nothing is read from arguments. One `sts:GetCallerIdentity` call confirms the identity before anything else runs.
 
-**Azure**: Uses Azure CLI authentication. Run `az login` first. The tool reads the active subscription unless you specify one with `--subscription`.
+**Azure**: the Azure CLI login. Run `az login` first. The tool uses the default enabled subscription unless `--subscription` is given.
 
 ### Required permissions
 
-Both clouds need read-only access. The tool never modifies any resource.
+Read-only in both clouds. **AWS**: the AWS-managed `SecurityAudit` policy covers everything; the module reference lists the exact calls. The tool also calls `sts:GetCallerIdentity`, `iam:ListAccountAliases` and `ec2:DescribeRegions`. **Azure**: Reader on the subscription.
 
-**AWS**: Easiest path is the AWS-managed `SecurityAudit` policy. For granular per-module permissions, see the module reference sections above.
+### What this tool sends over the network
 
-**Azure**: Reader role at the subscription scope. No custom permissions needed for any module.
+| Component | Destination | What is sent | When |
+|---|---|---|---|
+| AWS authentication | the STS endpoint of your default region | one `GetCallerIdentity` request using the credentials boto3 finds locally | every AWS run |
+| AWS account alias and regions | IAM (global) and EC2 in your default region | `ListAccountAliases`, `DescribeRegions` | every AWS run |
+| iam, s3 | the IAM and S3 global endpoints | the describe, get and list calls named in the module reference | every AWS run unless skipped |
+| ec2, cloudtrail, rds, vpc, lambda, kms, secrets | the service endpoint in each selected region | the describe, get and list calls named in the module reference, once per region | every AWS run unless skipped |
+| boto3 credential chain | the EC2 instance metadata service (169.254.169.254) or the ECS or EKS credential endpoint | a credential request, only when no static credentials or profile are configured and you are running on AWS compute | boto3's own behaviour |
+| Azure authentication | the local `az` command, which talks to `login.microsoftonline.com` | `az account get-access-token` for the management scope, run by `AzureCliCredential`; `az account show --subscription <id>` when the subscription listing has no tenant id | every Azure run |
+| Azure modules | `management.azure.com` | subscription, role, storage, network, compute, key vault, SQL and Cosmos DB list and get calls | every Azure run unless skipped |
+| Reports | nothing | files are written to `--output` only | |
+
+No third-party service is contacted. There are no update checks, no telemetry and no outbound calls other than the cloud APIs above. The remediation script is a file; the tool never executes it.
+
+### Known issues
+
+- S3 bucket calls (`GetBucketPublicAccessBlock` and the others) are made with the base session's region. boto3 follows most S3 region redirects, but a call for a bucket in another region can still fail; when it does, the bucket appears as a not-run line rather than a finding or a silent pass.
+- A region named with `--region` that is not enabled for the account is attempted anyway and will fail with an API error recorded in the coverage table.
+- Compliance mapping covers only the controls listed in `analysis/compliance.py`; "controls failed" is a count over those, not a CIS or NIST assessment.
+- A full default run makes nine modules' worth of calls in every enabled region; on an account with many regions this takes minutes.
 
 ## Reports
 
 ### HTML
 
-Tabbed dark-themed report with sections for:
-- **Overview** - Score, finding counts by severity, services breakdown
-- **Executive Summary** - Auto-generated plain language summary for non-technical readers
-- **Attack Paths** - Chained finding scenarios showing realistic compromise paths
-- **Findings** - Every finding with observation, risk, recommendation, remediation command, effort estimate
-- **Compliance** - CIS and NIST controls failed, grouped by category
-- **Remediation** - Every actionable command in execution order
-
-### PDF
-
-Branded export of the HTML report. Page numbers, confidential footer, Atarus branding. Ready to attach to a client email.
+Tabbed dark-themed report: Overview (score or "Partial", counts, regions, coverage summary), Executive Summary, Attack Paths, Findings (observation, risk, recommendation, quoted command, effort, controls), Compliance, Coverage (per service and region, every check that did not run with its reason, and the full check list) and Remediation.
 
 ### JSON
 
-Full machine-readable output with every finding, attack path, compliance mapping, and executive summary field. Use for SIEM/SOAR integration, custom dashboards, or piping into other tools.
+Everything in the HTML report plus `coverage` (one object per check: module, service, region, check, status, detail), `coverage_status`, `checks_total`, `checks_not_run`, `regions`, `regions_not_checked`, `overall_score` (`null` when partial) and `score_note`.
 
-### remediation.sh
+### PDF
 
-Auto-generated shell script with every actionable CLI command, ordered by severity (critical first). Each command is preceded by comments with the finding, the resource and the estimated effort. Review every command before running.
-
-The script uses `set -e`, so it stops at the first failing command. Some commands contain placeholders you must edit first (for example `YOUR-LOG-BUCKET` in the CloudTrail fix). Resource names are inserted without shell quoting, so read the script rather than piping it to a shell.
+The HTML report rendered by WeasyPrint, with page numbers and footer. Needs the `[pdf]` extra and the Pango libraries.
 
 ## Compliance frameworks
 
-- **CIS AWS Foundations Benchmark 2.0** (18 controls mapped)
-- **CIS Azure Foundations Benchmark 2.0** (21 controls mapped)
-- **NIST 800-53 Rev 5** (14 controls mapped, shared across AWS and Azure)
+- CIS AWS Foundations Benchmark 2.0 (18 controls mapped)
+- CIS Azure Foundations Benchmark 2.0 (21 controls mapped)
+- NIST 800-53 Rev 5 (14 controls mapped, shared across AWS and Azure)
 
-The Compliance tab in the HTML report shows controls that failed, grouped by framework. Findings link back to the controls they violate.
+The Compliance tab shows the mapped controls that have a failing finding. A mapped control with no failing finding is not shown as passed, and when coverage is partial the tab says so.
 
-## Adding a custom module
-
-Every module is a function with this signature:
+## Adding a module
 
 ```python
+from atarus_cloud.models import AuditResult, CloudFinding
+from atarus_cloud.providers.aws.common import q, region_of
+from atarus_cloud.runner import ModuleResult
+
 def run(result: AuditResult, session, verbose: bool) -> ModuleResult:
-    """Module docstring"""
-    # ... do work ...
-    return ModuleResult(success=True, message="Did the thing")
+    cov = result.recorder("yourmodule", "YourService", region_of(session))
+    client = session.client("yourservice")
+    try:
+        things = client.list_things()["Things"]
+    except Exception as e:
+        return ModuleResult(success=False, message=f"Cannot list things: {e}")  # recorded as not run
+    for t in things:
+        if t["Open"]:
+            result.add_finding(CloudFinding(service="YourService", resource_id=t["Id"], resource_name=t["Name"],
+                                            severity="high", observation="...", risk="...", recommendation="...",
+                                            remediation_cmd=f"aws yourservice close-thing --id {q(t['Id'])}"))
+    cov.checked("open things", f"{len(things)} things")
+    return ModuleResult(success=True, message=f"Checked {len(things)} things")
 ```
 
-Save it as `src/atarus_cloud/providers/aws/yourmodule.py` (or `azure/yourmodule.py`). Register it in `cli.py`:
-
-```python
-from atarus_cloud.providers.aws import yourmodule
-
-AWS_MODULES = [
-    # ... existing modules ...
-    ("Your module description", "yourmodule", yourmodule.run),
-]
-```
-
-Reinstall with `pip install -e .` and your module is now available via `--only yourmodule`.
-
-The module receives the running `AuditResult`, a `session` (a boto3 `Session` for AWS; for Azure a dict with `credential`, `subscription_id` and `tenant_id`), and a verbose flag. Mutate `result.findings` to add findings.
-
-## Roadmap
-
-- GCP provider (gcloud authentication, IAM, storage, compute)
-- Multi-account AWS / multi-subscription Azure scanning
-- ECR, ECS, EKS audit modules (AWS containers)
-- AKS audit module (Azure Kubernetes)
-- API Gateway audit modules (AWS and Azure)
-- Additional compliance frameworks (PCI DSS, HIPAA, SOC 2)
-- Scan comparison mode (diff two scans over time)
-
-## Part of the atarus- tool suite
-
-- **[atarus-recon](https://github.com/atarus-security/atarus-recon)** - External attack surface recon
-- **atarus-cloud** - Multi-cloud misconfiguration scanner (you are here)
-- **[atarus-phishcheck](https://github.com/atarus-security/atarus-phishcheck)** - Email security analyzer
-- **[atarus-report-kit](https://github.com/atarus-security/atarus-report-kit)** - Pentest report builder for juniors and students
-- **[atarus-webscan](https://github.com/atarus-security/atarus-webscan)** - Web application security scanner
+Register it in `cli.py` with its service label and scope (`SCOPE_GLOBAL` or `SCOPE_REGIONAL`). Rules: every check records `checked` or `not_run`, never a silent `except`; every value that goes into `remediation_cmd` passes through `q()` (`shlex.quote`); the module makes only read calls. `session` is a boto3 `Session` bound to one region for AWS, or for Azure a dict with `credential`, `subscription_id` and `tenant_id`.
 
 ## Testing
 
@@ -473,11 +332,19 @@ The module receives the running `AuditResult`, a `session` (a boto3 `Session` fo
 python -m unittest discover -s tests -v
 ```
 
-Offline, standard library only; cloud APIs are faked. GitHub Actions runs the suite on every push. `constraints.txt` records the dependency versions the tests last passed with (`pip install -c constraints.txt -e .`).
+Offline. Every SDK client is faked and the socket layer is guarded so no test can reach a cloud API. GitHub Actions runs the suite on a base install (no Azure SDK, no WeasyPrint) across Python 3.10 to 3.13, and once more with `.[all]` pinned to `constraints.txt`.
+
+## Part of the atarus- tool suite
+
+- **[atarus-recon](https://github.com/atarus-security/atarus-recon)**: external attack surface recon
+- **atarus-cloud**: cloud configuration review (you are here)
+- **[atarus-phishcheck](https://github.com/atarus-security/atarus-phishcheck)**: email security analyzer
+- **[atarus-report-kit](https://github.com/atarus-security/atarus-report-kit)**: pentest report builder for juniors and students
+- **[atarus-webscan](https://github.com/atarus-security/atarus-webscan)**: web application security scanner
 
 ## Security
 
-See [SECURITY.md](SECURITY.md) to report a vulnerability.
+See [SECURITY.md](SECURITY.md) to report a vulnerability and for what counts as one in this tool.
 
 ## License
 
@@ -486,5 +353,3 @@ MIT
 ## Built by
 
 [Atarus Offensive Security](https://atarussecurity.com)
-
-We are building the groundwork for the AI pentesting tool of the future, one module at a time.

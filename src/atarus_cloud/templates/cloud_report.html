@@ -31,6 +31,14 @@
   .scan-info td { padding: 8px 0; border-bottom: 1px solid #1a1a1a; vertical-align: top; }
   .scan-info tr:last-child td { border-bottom: none; }
   .scan-info td:first-child { color: #888; width: 160px; font-size: 13px; }
+  .coverage-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 24px; }
+  .coverage-table th { text-align: left; color: #888; font-weight: 500; padding: 8px 10px; border-bottom: 1px solid #222; }
+  .coverage-table td { padding: 7px 10px; border-bottom: 1px solid #161616; vertical-align: top; color: #ccc; }
+  .coverage-table tr:last-child td { border-bottom: none; }
+  .cov-checked { color: #22c55e; }
+  .cov-partial { color: #EF9F27; }
+  .cov-notrun { color: #E24B4A; }
+  .partial-note { background: #1a1200; border: 1px solid #5a4100; color: #f1c15c; border-radius: 8px; padding: 14px 18px; margin-bottom: 24px; font-size: 14px; }
   .section-title { font-size: 16px; font-weight: 600; color: #fff; margin: 28px 0 14px; padding-bottom: 6px; border-bottom: 1px solid #1a1a1a; }
   .fix-first { background: #111; border: 1px solid #D4263E; border-radius: 8px; padding: 20px 24px; margin-bottom: 28px; }
   .fix-first h3 { color: #D4263E; font-size: 16px; margin-bottom: 14px; letter-spacing: 0.5px; }
@@ -108,8 +116,13 @@
 
   <div class="summary">
     <div class="card">
+      {% if result.overall_score is none %}
+      <div class="number score-warn">Partial</div>
+      <div class="label">No score: {{ result.checks_not_run }} of {{ result.checks_total }} checks did not run</div>
+      {% else %}
       <div class="number {{ 'score-good' if result.overall_score >= 80 else 'score-warn' if result.overall_score >= 50 else 'score-bad' }}">{{ result.overall_score }}</div>
-      <div class="label">Score /100</div>
+      <div class="label">Score /100 (every check ran)</div>
+      {% endif %}
     </div>
     <div class="card">
       <div class="number score-crit">{{ crits | length }}</div>
@@ -135,10 +148,14 @@
     {% if attack_paths %}<div class="tab" onclick="switchTab('paths')">Attack Paths ({{ attack_paths | length }})</div>{% endif %}
     <div class="tab" onclick="switchTab('findings')">Findings</div>
     <div class="tab" onclick="switchTab('compliance')">Compliance</div>
+    <div class="tab" onclick="switchTab('coverage')">Coverage{% if result.checks_not_run %} ({{ result.checks_not_run }} not run){% endif %}</div>
     <div class="tab" onclick="switchTab('remediation')">Remediation</div>
   </div>
 
   <div id="tab-overview" class="tab-content active">
+    {% if result.overall_score is none %}
+    <div class="partial-note">Coverage is partial: {{ result.checks_not_run }} of {{ result.checks_total }} checks did not run. No score is given and a service with no findings is not a clean service. The Coverage tab lists every check that did not run and why.</div>
+    {% endif %}
     <div class="scan-info">
       <table>
         <tr><td>Provider</td><td>{{ result.provider | upper }}</td></tr>
@@ -147,9 +164,12 @@
         <tr><td>Completed</td><td>{{ result.finished_at }}</td></tr>
         <tr><td>Total findings</td><td>{{ result.total_findings }}</td></tr>
         <tr><td>Attack paths</td><td>{{ attack_paths | length }}</td></tr>
+        {% if result.provider == 'aws' %}<tr><td>Regions checked</td><td>{{ result.regions | join(', ') if result.regions else 'none' }}</td></tr>
+        {% if result.regions_not_checked %}<tr><td>Regions not checked</td><td>{% for r in result.regions_not_checked %}{{ r.region }} ({{ r.reason }}){% if not loop.last %}; {% endif %}{% endfor %}</td></tr>{% endif %}{% endif %}
+        <tr><td>Coverage</td><td>{{ result.coverage_status }}: {{ result.checks_total - result.checks_not_run }} of {{ result.checks_total }} checks ran</td></tr>
         {% if compliance %}<tr><td>CIS controls failed</td><td>{{ compliance.cis_failed }} of {{ compliance.cis_total }}</td></tr>
         <tr><td>NIST controls failed</td><td>{{ compliance.nist_failed }} of {{ compliance.nist_total }}</td></tr>{% endif %}
-        <tr><td>Tool</td><td>atarus-cloud v1.0.0</td></tr>
+        <tr><td>Tool</td><td>atarus-cloud v{{ version }}</td></tr>
       </table>
     </div>
 
@@ -266,7 +286,7 @@
     {% endfor %}
     {% endif %}
     {% endfor %}
-    {% if not result.findings %}<div class="no-data">No findings detected.</div>{% endif %}
+    {% if not result.findings %}<div class="no-data">{% if result.overall_score is none %}No findings among the checks that ran. Coverage is partial ({{ result.checks_not_run }} checks did not run), so this is not a clean result.{% else %}No findings detected.{% endif %}</div>{% endif %}
   </div>
 
 
@@ -320,10 +340,55 @@
     {% endif %}
 
     {% if compliance.cis_failed == 0 and compliance.nist_failed == 0 %}
-    <div class="no-data">No compliance controls failed. Environment meets CIS and NIST control coverage.</div>
+    <div class="no-data">{% if result.overall_score is none %}No failed controls among the checks that ran. Coverage is partial, so controls without a finding are not passes.{% else %}No mapped control has a failing finding. Only the controls this tool maps were evaluated; it is not a full CIS or NIST assessment.{% endif %}</div>
     {% endif %}
   </div>
   {% endif %}
+
+  <div id="tab-coverage" class="tab-content">
+    {% if result.overall_score is none %}
+    <div class="partial-note">{{ result.checks_not_run }} of {{ result.checks_total }} checks did not run. Each one is listed below with the reason. Fix the cause (usually a missing permission or an unselected region) and run again before treating a service as reviewed.</div>
+    {% else %}
+    <div class="no-data">Every check ran in every selected region.</div>
+    {% endif %}
+    <h3 class="section-title">By service and region</h3>
+    <table class="coverage-table">
+      <tr><th>Service</th><th>Region</th><th>Status</th><th>Detail</th></tr>
+      {% for row in coverage_rows %}
+      <tr>
+        <td>{{ row.service }}</td>
+        <td>{{ row.region }}</td>
+        <td class="{{ 'cov-checked' if row.status == 'checked' else 'cov-partial' if row.status == 'partial' else 'cov-notrun' }}">{{ row.status }}</td>
+        <td>{{ row.detail }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% if not_run or result.regions_not_checked %}
+    <h3 class="section-title">Checks not run</h3>
+    <table class="coverage-table">
+      <tr><th>Service</th><th>Region</th><th>Check</th><th>Reason</th></tr>
+      {% for r in result.regions_not_checked %}
+      <tr><td>all regional services</td><td>{{ r.region }}</td><td>all checks</td><td>{{ r.reason }}</td></tr>
+      {% endfor %}
+      {% for rec in not_run %}
+      <tr><td>{{ rec.service }}</td><td>{{ rec.region }}</td><td>{{ rec.check }}</td><td>{{ rec.detail }}</td></tr>
+      {% endfor %}
+    </table>
+    {% endif %}
+    <h3 class="section-title">Every check</h3>
+    <table class="coverage-table">
+      <tr><th>Service</th><th>Region</th><th>Check</th><th>Status</th><th>Detail</th></tr>
+      {% for rec in result.coverage %}
+      <tr>
+        <td>{{ rec.service }}</td>
+        <td>{{ rec.region }}</td>
+        <td>{{ rec.check }}</td>
+        <td class="{{ 'cov-checked' if rec.status == 'checked' else 'cov-notrun' }}">{{ 'checked' if rec.status == 'checked' else 'not run' }}</td>
+        <td>{{ rec.detail }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
 
     <div id="tab-remediation" class="tab-content">
     {% set actionable = [] %}
@@ -333,8 +398,8 @@
     {% if actionable %}
     <div class="scan-info">
       <table>
-        <tr><td>Actionable fixes</td><td>{{ actionable | length }}</td></tr>
-        <tr><td>Script</td><td>remediation-{{ result.account_id }}.sh</td></tr>
+        <tr><td>Suggested commands</td><td>{{ actionable | length }}</td></tr>
+        <tr><td>Script</td><td>{% if remediation_path %}{{ remediation_path }} (every command commented out, file mode 0644; review each line before enabling it){% else %}not written; run with --remediation-script to get one{% endif %}</td></tr>
       </table>
     </div>
     {% for f in actionable %}
@@ -351,7 +416,7 @@
       {% if f.remediation_effort %}<div class="finding-meta"><span class="meta-pill">{{ f.remediation_effort }}</span></div>{% endif %}
     </div>
     {% endfor %}
-    {% else %}<div class="no-data">No CLI-actionable remediation steps available.</div>{% endif %}
+    {% else %}<div class="no-data">No findings with a suggested CLI command.</div>{% endif %}
   </div>
 
   <div class="footer">Generated by <a href="https://atarussecurity.com">Atarus Offensive Security</a></div>

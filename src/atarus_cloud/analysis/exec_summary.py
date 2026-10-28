@@ -47,7 +47,14 @@ def _posture_statement(result, crits, highs, meds, lows, provider_label):
     score = result.overall_score
     total = result.total_findings
 
-    if score >= 90:
+    if score is None:
+        summary = (
+            f"The {provider_label} assessment did not complete every check: {result.checks_not_run} of "
+            f"{result.checks_total} checks did not run (see the coverage table for each one and the reason). "
+            f"No posture score is given, because a score over a partial set of checks would read as a clean "
+            f"result for the checks that never ran. The findings below cover only the checks that did run."
+        )
+    elif score >= 90:
         summary = f"The {provider_label} environment demonstrates strong security posture with a score of {score} out of 100."
     elif score >= 75:
         summary = f"The {provider_label} environment shows adequate security posture with a score of {score} out of 100, with specific areas requiring improvement."
@@ -69,6 +76,8 @@ def _posture_statement(result, crits, highs, meds, lows, provider_label):
     if breakdown_parts:
         breakdown = f"The assessment identified {total} finding{'s' if total != 1 else ''}: {', '.join(breakdown_parts)} severity."
         summary = f"{summary} {breakdown}"
+    elif score is None:
+        summary = f"{summary} The checks that ran produced no findings; that is not a clean result for the account."
     else:
         summary = f"{summary} No findings were identified during the assessment."
 
@@ -77,6 +86,9 @@ def _posture_statement(result, crits, highs, meds, lows, provider_label):
 
 def _key_risks(result, crits, highs, attack_paths):
     if not crits and not highs and not attack_paths:
+        if result.overall_score is None:
+            return ("No critical or high severity risks were identified among the checks that ran. Coverage was partial, "
+                    "so the checks listed as not run should be completed before this is read as a clean result.")
         return "No critical or high severity risks were identified. The environment should maintain current controls and continue periodic assessment."
 
     risks = []
@@ -140,7 +152,7 @@ def _recommended_actions(result, crits, highs, meds, cli_label):
 
     rem_count = len([f for f in result.findings if f.remediation_cmd and not f.remediation_cmd.startswith("#")])
     if rem_count > 0:
-        actions.append(f"This assessment includes an auto-generated remediation script containing {rem_count} actionable {cli_label} command{'s' if rem_count != 1 else ''}. Review the script, validate each command against the environment, and execute it to resolve the majority of findings.")
+        actions.append(f"{rem_count} finding{'s' if rem_count != 1 else ''} come{'s' if rem_count == 1 else ''} with a suggested {cli_label} command. If the tool was run with --remediation-script, those commands are also collected in a script in which every line is commented out; review each command against the environment before enabling it.")
 
     actions.append("The full findings section provides detailed observation, risk analysis, and remediation guidance for each item identified.")
 
