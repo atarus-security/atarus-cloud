@@ -73,7 +73,7 @@ Reasons you will see: an API error (usually a missing permission), `skipped with
 
 ### Score only on full coverage
 
-If every check ran in every selected region, the report carries a score out of 100 and the usual wording. If even one check did not run, there is no score: the console, the report and the JSON say **partial coverage, no score (n of m checks did not run)**, the executive summary says the assessment did not complete, the findings tab says that no findings among the checks that ran is not a clean result, and the compliance tab says that controls with no finding are not passes. A service with zero findings is a clean service only when its checks are all marked checked.
+If every check ran in every selected region, the report carries a score out of 100 and the usual wording. If even one check did not run, there is no score: the console, the report and the JSON say **partial coverage, no score (n of m checks did not run)**, the executive summary says the assessment did not complete, the findings tab says that no findings among the checks that ran is not a clean result, and the compliance tab says that controls with no finding are not passes. A service with zero findings is a clean service only when its checks are all marked checked. Coverage is self reported by each module, so the runner adds one guard: a module that returns success without recording a single check is itself recorded as not run, with the reason "module reported no coverage", and the score is withheld as for any other not-run line.
 
 ### Regions
 
@@ -324,7 +324,7 @@ def run(result: AuditResult, session, verbose: bool) -> ModuleResult:
     return ModuleResult(success=True, message=f"Checked {len(things)} things")
 ```
 
-Register it in `cli.py` with its service label and scope (`SCOPE_GLOBAL` or `SCOPE_REGIONAL`). Rules: every check records `checked` or `not_run`, never a silent `except`; every value that goes into `remediation_cmd` passes through `q()` (`shlex.quote`); the module makes only read calls. `session` is a boto3 `Session` bound to one region for AWS, or for Azure a dict with `credential`, `subscription_id` and `tenant_id`.
+Register it in `cli.py` with its service label and scope (`SCOPE_GLOBAL` or `SCOPE_REGIONAL`). Rules: every check records `checked` or `not_run`, never a silent `except` (a module that records nothing is listed as not run by the runner); every value that goes into `remediation_cmd` passes through `q()` (`shlex.quote`); the module makes only read calls. `session` is a boto3 `Session` bound to one region for AWS, or for Azure a dict with `credential`, `subscription_id` and `tenant_id`.
 
 ## Testing
 

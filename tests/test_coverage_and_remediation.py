@@ -28,7 +28,7 @@ from atarus_cloud.providers.aws import auth as aws_auth, iam, s3, ec2, cloudtrai
 from atarus_cloud.providers.azure import identity as az_identity, storage as az_storage, sql as az_sql
 from atarus_cloud.analysis import exec_summary, compliance
 from atarus_cloud.reports import html, json_export, remediation
-from atarus_cloud.runner import CloudRunner, ModuleResult, SCOPE_GLOBAL, SCOPE_REGIONAL
+from atarus_cloud.runner import CloudRunner, ModuleResult, SCOPE_GLOBAL, SCOPE_REGIONAL, NO_COVERAGE_REASON
 
 
 def _network_refused(*args, **kwargs):
@@ -250,6 +250,42 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(reasons[("KMS", "us-west-1")], "skipped with --skip")
         self.assertIsNone(result.overall_score)
         self.assertEqual(result.coverage_status, "partial")
+
+    def test_module_that_reports_no_coverage_is_recorded_as_not_run(self):
+        def silent(result, session, verbose):
+            # Says it succeeded, never calls cov.checked or cov.not_run.
+            return ModuleResult(True, "0 findings")
+
+        def fine(result, session, verbose):
+            result.recorder("vpc", "VPC", session.region_name).checked("flow logs")
+            return ModuleResult(True, "")
+
+        runner = self._runner(regions=("us-west-1", "eu-west-1"))
+        runner.register("RDS audit", "rds", silent, service="RDS")
+        runner.register("VPC audit", "vpc", fine, service="VPC")
+        with _quiet_console() as sink:
+            result = runner.run()
+        rds_lines = [c for c in result.not_run_records if c.service == "RDS"]
+        self.assertEqual(sorted(c.region for c in rds_lines), ["eu-west-1", "us-west-1"])
+        self.assertTrue(all(c.detail == NO_COVERAGE_REASON for c in rds_lines), rds_lines)
+        self.assertTrue(all(c.check == "all checks" for c in rds_lines))
+        self.assertIsNone(result.overall_score, "a module that looked at nothing withholds the score")
+        self.assertEqual(result.coverage_status, "partial")
+        text = sink.file.getvalue()
+        self.assertIn("module reported no coverage", text)
+        self.assertNotIn("done RDS audit", text)
+
+    def test_module_with_coverage_rows_is_not_flagged(self):
+        def records_a_not_run_only(result, session, verbose):
+            result.recorder("kms", "KMS", session.region_name).not_run("key rotation", "AccessDenied")
+            return ModuleResult(True, "")
+
+        runner = self._runner(regions=("us-west-1",))
+        runner.register("KMS audit", "kms", records_a_not_run_only, service="KMS")
+        with _quiet_console():
+            result = runner.run()
+        details = [c.detail for c in result.not_run_records]
+        self.assertEqual(details, ["AccessDenied"], "the module's own row stands; no second line is added")
 
     def test_only_records_the_rest_as_not_run(self):
         def fine(result, session, verbose):
